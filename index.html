@@ -274,11 +274,7 @@ document.getElementById("sectionTitle").textContent=
     grid.innerHTML=results.length
       ?results.map(p=>`
         <article class="card">
-          <div class="product-img">
-  ${p.thumbnail
-    ? `<img src="${p.thumbnail}" alt="${p.title||"Product"}" loading="lazy">`
-    : "🛍️"}
-</div>
+          <div class="product-img">🛍️</div>
           <div class="store">${p.source||"Store"}</div>
           <div class="name">${p.title||"Product"}</div>
           <div class="rating">
