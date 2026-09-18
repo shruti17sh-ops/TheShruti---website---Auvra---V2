@@ -258,20 +258,33 @@ async function renderProducts(){
       throw new Error(data.error||"Search failed");
     }
 
-    const results=data.products||[];
+const results=data.products||[];
 
 document.getElementById("sectionTitle").textContent=
   `Results for "${q}"`;
 
-...
+document.getElementById("count").textContent=
+  results.length+" items";
 
-    document.getElementById("sectionTitle").textContent=
-      `Results for "${q}"`;
-
-    document.getElementById("count").textContent=
-      results.length+" items";
-
-    grid.innerHTML=results.length
+grid.innerHTML=results.length
+  ?results.map(p=>`
+    <article class="card">
+      <div class="product-img">🛍️</div>
+      <div class="store">${p.source||"Store"}</div>
+      <div class="name">${p.title||"Product"}</div>
+      <div class="rating">
+        ⭐ ${p.rating||"—"} · ${p.reviews||0} reviews
+      </div>
+      <div class="price">
+        ${money(p.price||0)}
+        ${p.oldPrice?`<span class="old">${money(p.oldPrice)}</span>`:""}
+      </div>
+      <div class="notice">
+        ${p.delivery||""}
+      </div>
+    </article>
+  `).join("")
+  :`<div class="notice">No products found.</div>`;
       ?results.map(p=>`
         <article class="card">
           <div class="product-img">🛍️</div>
