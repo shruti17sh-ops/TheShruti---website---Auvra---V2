@@ -1,44 +1,46 @@
-export default async function handler(request) {
-  const url = new URL(request.url);
-  const q = url.searchParams.get("q")?.trim();
-
-  if (!q) {
-    return Response.json(
-      { error: "Search query is required" },
-      { status: 400 }
-    );
+module.exports = async (req, res) => {
+  if (req.method !== "GET") {
+    return res.status(405).json({
+      error: "Method not allowed"
+    });
   }
 
-  const products = [
-    {
-      id: "demo-1",
-      title: "Wireless Noise-Cancel Headphones",
-      price: 1999,
-      oldPrice: 2999,
-      source: "Demo Store",
-      rating: 4.5,
-      reviews: 1200,
-      thumbnail: "",
-      link: "#",
-      delivery: "Demo data"
-    },
-    {
-      id: "demo-2",
-      title: "Smart Fitness Watch",
-      price: 1499,
-      oldPrice: 2199,
-      source: "Demo Store",
-      rating: 4.3,
-      reviews: 800,
-      thumbnail: "",
-      link: "#",
-      delivery: "Demo data"
-    }
-  ];
+  const q = String(req.query?.q || "").trim();
 
-  return Response.json({
+  if (!q) {
+    return res.status(400).json({
+      error: "Search query is required"
+    });
+  }
+
+  return res.status(200).json({
     mode: "demo",
     query: q,
-    products
+    products: [
+      {
+        id: "demo-1",
+        title: "Wireless Noise-Cancel Headphones",
+        price: 1999,
+        oldPrice: 2999,
+        source: "Demo Store",
+        rating: 4.5,
+        reviews: 1200,
+        thumbnail: "",
+        link: "#",
+        delivery: "Demo data"
+      },
+      {
+        id: "demo-2",
+        title: "Smart Fitness Watch",
+        price: 1499,
+        oldPrice: 2199,
+        source: "Demo Store",
+        rating: 4.3,
+        reviews: 800,
+        thumbnail: "",
+        link: "#",
+        delivery: "Demo data"
+      }
+    ]
   });
-}
+};
