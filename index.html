@@ -260,6 +260,11 @@ async function renderProducts(){
 
     const results=data.products||[];
 
+document.getElementById("sectionTitle").textContent=
+  `Results for "${q}"`;
+
+...
+
     document.getElementById("sectionTitle").textContent=
       `Results for "${q}"`;
 
@@ -269,7 +274,11 @@ async function renderProducts(){
     grid.innerHTML=results.length
       ?results.map(p=>`
         <article class="card">
-          <div class="product-img">🛍️</div>
+          <div class="product-img">
+  ${p.thumbnail
+    ? `<img src="${p.thumbnail}" alt="${p.title||"Product"}" loading="lazy">`
+    : "🛍️"}
+</div>
           <div class="store">${p.source||"Store"}</div>
           <div class="name">${p.title||"Product"}</div>
           <div class="rating">
