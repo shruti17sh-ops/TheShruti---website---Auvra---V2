@@ -349,8 +349,15 @@ function affiliateNotice(e,id){
    alert("Affiliate placeholder: replace this # with your approved affiliate tracking URL.");
  }
 }
-renderProducts();
-initSupabase();
+try {
+  renderProducts();
+} catch (error) {
+  document.getElementById("grid").innerHTML =
+    '<div class="notice"><strong>Auvra JavaScript error:</strong><br>' +
+    error.message +
+    '</div>';
+  console.error(error);
+}
 </script>
 </body>
 </html>
