@@ -13,34 +13,72 @@ module.exports = async (req, res) => {
     });
   }
 
-  return res.status(200).json({
-    mode: "demo",
-    query: q,
-    products: [
-      {
-        id: "demo-1",
-        title: "Wireless Noise-Cancel Headphones",
-        price: 1999,
-        oldPrice: 2999,
-        source: "Demo Store",
-        rating: 4.5,
-        reviews: 1200,
-        thumbnail: "",
-        link: "#",
-        delivery: "Demo data"
-      },
-      {
-        id: "demo-2",
-        title: "Smart Fitness Watch",
-        price: 1499,
-        oldPrice: 2199,
-        source: "Demo Store",
-        rating: 4.3,
-        reviews: 800,
-        thumbnail: "",
-        link: "#",
-        delivery: "Demo data"
-      }
-    ]
-  });
+  const key = process.env.SERPAPI_KEY;
+
+  if (!key) {
+    return res.status(500).json({
+      error: "Search provider is not configured"
+    });
+  }
+
+  try {
+    const params = new URLSearchParams({
+      engine: "google_shopping",
+      q,
+      api_key: key,
+      location: "India",
+      hl: "en",
+      device: "mobile"
+    });
+
+    const response = await fetch(
+      `https://serpapi.com/search?${params.toString()}`
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      return res.status(response.status).json({
+        error: data?.error || "Shopping search provider error"
+      });
+    }
+
+    const products = (data.shopping_results || []).map(
+      (item, index) => ({
+        id: item.product_id || `shopping-${index}`,
+
+        title: item.title || "Product",
+
+        price: item.extracted_price ?? null,
+
+        oldPrice: item.extracted_old_price ?? null,
+
+        source: item.source || "Retailer",
+
+        rating: item.rating ?? null,
+
+        reviews: item.reviews ?? 0,
+
+        thumbnail: item.thumbnail || "",
+
+        link: item.product_link || "",
+
+        delivery: item.delivery || ""
+      })
+    );
+
+    return res.status(200).json({
+      mode: "live",
+      query: q,
+      products
+    });
+
+  } catch (error) {
+
+    console.error("Search provider error:", error);
+
+    return res.status(500).json({
+      error: "Search provider request failed"
+    });
+  }
 };
