@@ -1,18 +1,14 @@
-module.exports = async (req, res) => {
-  if (req.method !== "GET") {
-    return res.status(405).json({ error: "Method not allowed" });
-  }
-
-  const q = String(req.query?.q || "").trim();
+export default async function handler(request) {
+  const url = new URL(request.url);
+  const q = url.searchParams.get("q")?.trim();
 
   if (!q) {
-    return res.status(400).json({
-      error: "Search query is required"
-    });
+    return Response.json(
+      { error: "Search query is required" },
+      { status: 400 }
+    );
   }
 
-  // Temporary demo results.
-  // We will connect this to a real shopping-search provider next.
   const products = [
     {
       id: "demo-1",
@@ -40,9 +36,9 @@ module.exports = async (req, res) => {
     }
   ];
 
-  return res.status(200).json({
+  return Response.json({
     mode: "demo",
     query: q,
     products
   });
-};
+}
