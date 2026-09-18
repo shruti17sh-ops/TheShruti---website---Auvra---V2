@@ -1,0 +1,48 @@
+module.exports = async (req, res) => {
+  if (req.method !== "GET") {
+    return res.status(405).json({ error: "Method not allowed" });
+  }
+
+  const q = String(req.query?.q || "").trim();
+
+  if (!q) {
+    return res.status(400).json({
+      error: "Search query is required"
+    });
+  }
+
+  // Temporary demo results.
+  // We will connect this to a real shopping-search provider next.
+  const products = [
+    {
+      id: "demo-1",
+      title: "Wireless Noise-Cancel Headphones",
+      price: 1999,
+      oldPrice: 2999,
+      source: "Demo Store",
+      rating: 4.5,
+      reviews: 1200,
+      thumbnail: "",
+      link: "#",
+      delivery: "Demo data"
+    },
+    {
+      id: "demo-2",
+      title: "Smart Fitness Watch",
+      price: 1499,
+      oldPrice: 2199,
+      source: "Demo Store",
+      rating: 4.3,
+      reviews: 800,
+      thumbnail: "",
+      link: "#",
+      delivery: "Demo data"
+    }
+  ];
+
+  return res.status(200).json({
+    mode: "demo",
+    query: q,
+    products
+  });
+};
