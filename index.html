@@ -215,7 +215,6 @@ function money(n){return "₹"+n.toLocaleString("en-IN")}
 async function renderProducts(){
   const q=document.getElementById("search").value.toLowerCase().trim();
 
-  // No search = show normal Auvra products
   if(!q){
     const list=products.filter(
       p=>category==="All"||p.category===category
@@ -236,7 +235,6 @@ async function renderProducts(){
     return;
   }
 
-  // Search = ask Auvra's backend
   document.getElementById("sectionTitle").textContent=
     `Searching for "${q}"…`;
 
@@ -258,33 +256,15 @@ async function renderProducts(){
       throw new Error(data.error||"Search failed");
     }
 
-const results=data.products||[];
+    const results=data.products||[];
 
-document.getElementById("sectionTitle").textContent=
-  `Results for "${q}"`;
+    document.getElementById("sectionTitle").textContent=
+      `Results for "${q}"`;
 
-document.getElementById("count").textContent=
-  results.length+" items";
+    document.getElementById("count").textContent=
+      results.length+" items";
 
-grid.innerHTML=results.length
-  ?results.map(p=>`
-    <article class="card">
-      <div class="product-img">🛍️</div>
-      <div class="store">${p.source||"Store"}</div>
-      <div class="name">${p.title||"Product"}</div>
-      <div class="rating">
-        ⭐ ${p.rating||"—"} · ${p.reviews||0} reviews
-      </div>
-      <div class="price">
-        ${money(p.price||0)}
-        ${p.oldPrice?`<span class="old">${money(p.oldPrice)}</span>`:""}
-      </div>
-      <div class="notice">
-        ${p.delivery||""}
-      </div>
-    </article>
-  `).join("")
-  :`<div class="notice">No products found.</div>`;
+    grid.innerHTML=results.length
       ?results.map(p=>`
         <article class="card">
           <div class="product-img">🛍️</div>
@@ -313,15 +293,14 @@ grid.innerHTML=results.length
     document.getElementById("count").textContent="";
 
     grid.innerHTML=
-  `<div class="notice">
-    <strong>Search temporarily unavailable</strong><br>
-    We couldn't load the results right now.<br>
-    Please try again in a moment.
-  </div>`;
+      `<div class="notice">
+        <strong>Search temporarily unavailable</strong><br>
+        We couldn't load the results right now.<br>
+        Please try again in a moment.
+      </div>`;
   }
-  }
-
-function card(p){
+}
+      
  const wished=wishlist.includes(p.id);
  return `<article class="card">
    <button class="wish" onclick="toggleWish(${p.id})">${wished?"♥":"♡"}</button>
