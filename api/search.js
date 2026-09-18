@@ -46,23 +46,14 @@ module.exports = async (req, res) => {
     const products = (data.shopping_results || []).map(
       (item, index) => ({
         id: item.product_id || `shopping-${index}`,
-
         title: item.title || "Product",
-
         price: item.extracted_price ?? null,
-
         oldPrice: item.extracted_old_price ?? null,
-
         source: item.source || "Retailer",
-
         rating: item.rating ?? null,
-
         reviews: item.reviews ?? 0,
-
         thumbnail: item.thumbnail || "",
-
         link: item.product_link || "",
-
         delivery: item.delivery || ""
       })
     );
