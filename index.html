@@ -1,363 +1,497 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="theme-color" content="#fff8fb">
-<meta name="description" content="Auvra — Find your everyday. Discover, compare and shop products from multiple stores.">
-<title>Auvra — Find your everyday</title>
-<style>
-:root{
-  --pink:#ff5c9a; --pink2:#ff8fba; --ink:#25212a; --muted:#7d7480;
-  --card:#fff; --bg:#fff8fb; --line:#f0e5eb; --green:#218c68;
-  --shadow:0 12px 35px rgba(55,25,45,.08);
-}
-*{box-sizing:border-box}
-html{scroll-behavior:smooth}
-body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--ink)}
-button,input{font:inherit}
-button{cursor:pointer;border:0}
-.app{max-width:520px;margin:auto;min-height:100vh;padding-bottom:82px}
-header{padding:22px 18px 14px;position:sticky;top:0;background:rgba(255,248,251,.94);backdrop-filter:blur(14px);z-index:10}
-.brand{display:flex;align-items:center;justify-content:space-between}
-.logo{font-size:27px;font-weight:900;letter-spacing:-1px}
-.logo span{color:var(--pink)}
-.tagline{font-size:11px;color:var(--muted);margin-top:2px}
-.icon-btn{width:40px;height:40px;border-radius:50%;background:#fff;border:1px solid var(--line);font-size:18px}
-.search{margin-top:16px;display:flex;align-items:center;background:#fff;border:1px solid var(--line);border-radius:17px;padding:0 14px;box-shadow:var(--shadow)}
-.search input{width:100%;height:48px;border:0;outline:0;background:transparent;font-size:14px}
-.hero{margin:8px 18px 18px;padding:23px;border-radius:25px;background:linear-gradient(135deg,#ffe1ec,#fff);box-shadow:var(--shadow)}
-.hero h1{margin:0;font-size:27px;line-height:1.08;letter-spacing:-1px}
-.hero p{color:var(--muted);font-size:13px;line-height:1.5;margin:10px 0 16px}
-.cta{background:var(--ink);color:#fff;padding:12px 17px;border-radius:13px;font-weight:800;font-size:13px}
-.section{padding:0 18px;margin-top:22px}
-.section-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
-.section h2{font-size:18px;margin:0}
-.small{font-size:12px;color:var(--pink);font-weight:800}
-.categories{display:flex;gap:10px;overflow:auto;padding-bottom:5px}
-.categories::-webkit-scrollbar{display:none}
-.cat{min-width:78px;background:#fff;border:1px solid var(--line);border-radius:17px;padding:11px 8px;text-align:center}
-.cat .emoji{font-size:23px;display:block;margin-bottom:4px}
-.cat b{font-size:11px}
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.card{background:#fff;border:1px solid var(--line);border-radius:20px;padding:10px;position:relative;box-shadow:0 7px 20px rgba(55,25,45,.045)}
-.product-img{height:145px;border-radius:15px;background:#f8f5f7;display:flex;align-items:center;justify-content:center;font-size:58px}
-.wish{position:absolute;right:17px;top:17px;width:32px;height:32px;border-radius:50%;background:#fff;font-size:17px;box-shadow:0 4px 12px #00000012}
-.store{font-size:10px;color:var(--muted);margin-top:9px}
-.name{font-size:13px;font-weight:800;margin:4px 0;line-height:1.25}
-.rating{font-size:10px;color:#a66b00}
-.price{font-size:17px;font-weight:900;margin-top:5px}
-.old{text-decoration:line-through;color:#aaa;font-size:11px;font-weight:500;margin-left:4px}
-.compare{width:100%;margin-top:9px;padding:9px;border-radius:11px;background:#fff0f5;color:#d93b78;font-size:11px;font-weight:900}
-.buy{width:100%;margin-top:6px;padding:10px;border-radius:11px;background:var(--pink);color:#fff;font-size:11px;font-weight:900}
-.empty{padding:25px;text-align:center;color:var(--muted);background:#fff;border:1px dashed var(--line);border-radius:18px;grid-column:1/-1}
-.bottom{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:min(520px,100%);height:72px;background:rgba(255,255,255,.96);backdrop-filter:blur(15px);border-top:1px solid var(--line);display:flex;justify-content:space-around;align-items:center;z-index:20}
-.nav{background:none;color:#8d838d;font-size:10px;font-weight:700;text-align:center}
-.nav strong{display:block;font-size:20px;margin-bottom:2px}
-.nav.active{color:var(--pink)}
-.modal{display:none;position:fixed;inset:0;background:#20182066;z-index:30;align-items:flex-end}
-.sheet{width:min(520px,100%);background:#fff;border-radius:26px 26px 0 0;padding:20px;max-height:80vh;overflow:auto}
-.sheet h3{margin:0 0 14px}
-.row{display:flex;justify-content:space-between;gap:12px;padding:13px 0;border-bottom:1px solid var(--line);font-size:13px}
-.row b{white-space:nowrap}
-.close{float:right;background:#f5f0f3;border-radius:50%;width:32px;height:32px}
-.notice{font-size:10px;color:var(--muted);line-height:1.4;margin-top:12px}
-@media(min-width:700px){body{padding:20px}.app{border-radius:30px;box-shadow:0 0 60px #0000000c;overflow:hidden}}
-</style>
-</head>
-<body>
-<div class="app">
-<header>
-  <div class="brand">
-    <div>
-      <div class="logo">Auvra<span>✦</span></div>
-      <div class="tagline">Find your everyday.</div>
-    </div>
-    <div style="display:flex;gap:8px"><button class="icon-btn" onclick="showAuth()" aria-label="Account">👤</button><button class="icon-btn" onclick="showWishlist()" aria-label="Wishlist">♡</button></div>
-  </div>
-  <div class="search">
-    🔎 <input id="search" placeholder="Search products, brands & categories" oninput="renderProducts()">
-  </div>
-</header>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#fff8fb">
 
-<main>
-<section class="hero">
-  <h1>Shop smarter.<br>Choose your way.</h1>
-  <p>Discover products from different stores, compare options and jump to the deal you want.</p>
-  <button class="cta" onclick="document.getElementById('products').scrollIntoView({behavior:'smooth'})">Explore deals →</button>
-</section>
+  <title>Auvra — Find your everyday</title>
 
-<section class="section">
-  <div class="section-head"><h2>Categories</h2><span class="small">View all</span></div>
-  <div class="categories">
-    <button class="cat" onclick="setCategory('Electronics')"><span class="emoji">📱</span><b>Electronics</b></button>
-    <button class="cat" onclick="setCategory('Fashion')"><span class="emoji">👗</span><b>Fashion</b></button>
-    <button class="cat" onclick="setCategory('Beauty')"><span class="emoji">💄</span><b>Beauty</b></button>
-    <button class="cat" onclick="setCategory('Home')"><span class="emoji">🏠</span><b>Home</b></button>
-    <button class="cat" onclick="setCategory('Fitness')"><span class="emoji">🏋️</span><b>Fitness</b></button>
-  </div>
-</section>
-
-<section class="section" id="products">
-  <div class="section-head"><h2 id="sectionTitle">Trending picks</h2><span class="small" id="count"></span></div>
-  <div class="grid" id="grid"></div>
-</section>
-</main>
-
-<nav class="bottom">
-  <button class="nav active" onclick="window.scrollTo({top:0,behavior:'smooth'})"><strong>⌂</strong>Home</button>
-  <button class="nav" onclick="document.getElementById('search').focus();window.scrollTo({top:0,behavior:'smooth'})"><strong>⌕</strong>Search</button>
-  <button class="nav" onclick="showCompare()"><strong>⇄</strong>Compare</button>
-  <button class="nav" onclick="showWishlist()"><strong>♡</strong>Wishlist</button>
-</nav>
-
-<div class="modal" id="modal" onclick="if(event.target===this)closeModal()">
-  <div class="sheet">
-    <button class="close" onclick="closeModal()">×</button>
-    <h3 id="modalTitle">Compare products</h3>
-    <div id="modalBody"></div>
-  </div>
-</div>
-</div>
-
-<script>
-const products=[
- {id:1,emoji:"🎧",name:"Wireless Noise-Cancel Headphones",category:"Electronics",store:"Demo Store A",price:1999,old:2999,rating:"4.5",link:"#"},
- {id:2,emoji:"⌚",name:"Smart Fitness Watch",category:"Electronics",store:"Demo Store B",price:1499,old:2199,rating:"4.3",link:"#"},
- {id:3,emoji:"👟",name:"Everyday Comfort Sneakers",category:"Fashion",store:"Demo Store C",price:1299,old:1999,rating:"4.4",link:"#"},
- {id:4,emoji:"👜",name:"Minimal Everyday Handbag",category:"Fashion",store:"Demo Store A",price:899,old:1499,rating:"4.6",link:"#"},
- {id:5,emoji:"💡",name:"Smart LED Desk Lamp",category:"Home",store:"Demo Store B",price:799,old:1199,rating:"4.2",link:"#"},
- {id:6,emoji:"🧴",name:"Daily Skincare Starter Set",category:"Beauty",store:"Demo Store C",price:699,old:999,rating:"4.5",link:"#"},
- {id:7,emoji:"🎒",name:"Lightweight College Backpack",category:"Fashion",store:"Demo Store B",price:1099,old:1699,rating:"4.4",link:"#"},
- {id:8,emoji:"🏃",name:"Adjustable Home Workout Kit",category:"Fitness",store:"Demo Store A",price:1599,old:2299,rating:"4.3",link:"#"}
-];
-let category="All", compare=[], wishlist=JSON.parse(localStorage.getItem("auvraWishlist")||"[]");
-let supabaseClient=null, currentUser=null;
-const SUPABASE_URL="https://kdpbbledordlpjfcsvmr.supabase.co";
-const SUPABASE_PUBLISHABLE_KEY="sb_publishable_-B87hD40j410bA_ONXRVPw_U86YdqeC";
-
-function supabaseReady(){
-  return window.supabase &&
-    SUPABASE_URL.startsWith("https://") &&
-    !SUPABASE_URL.includes("PASTE_") &&
-    !SUPABASE_PUBLISHABLE_KEY.includes("PASTE_");
-}
-async function initSupabase(){
-  if(!supabaseReady()) return;
-  supabaseClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
-  const {data}=await supabaseClient.auth.getSession();
-  currentUser=data?.session?.user||null;
-  if(currentUser) await loadCloudWishlist();
-  supabaseClient.auth.onAuthStateChange(async (_event,session)=>{
-    currentUser=session?.user||null;
-    if(currentUser) await loadCloudWishlist();
-    renderProducts();
-  });
-}
-async function loadCloudWishlist(){
-  const {data,error}=await supabaseClient.from("Wishlist").select("Product_id").eq("User_id",currentUser.id);
-  if(error){console.error(error);return;}
-  wishlist=(data||[]).map(x=>Number(x.Product_id));
-  localStorage.setItem("auvraWishlist",JSON.stringify(wishlist));
-  renderProducts();
-}
-async function toggleCloudWish(id){
-  const p=products.find(x=>x.id===id);
-  if(!currentUser){showAuth();return;}
-  if(wishlist.includes(id)){
-    const {error}=await supabaseClient.from("Wishlist").delete().eq("User_id",currentUser.id).eq("Product_id",String(id));
-    if(error){alert(error.message);return;}
-    wishlist=wishlist.filter(x=>x!==id);
-  }else{
-    const {error}=await supabaseClient.from("Wishlist").insert({
-      User_id:currentUser.id,Product_id:String(id),Product_name:p.name,Price:p.price,Image_url:""
-    });
-    if(error){alert(error.message);return;}
-    wishlist=[...wishlist,id];
-  }
-  localStorage.setItem("auvraWishlist",JSON.stringify(wishlist));
-  renderProducts();
-}
-async function signUp(){
-  if(!supabaseClient)return alert("Add your Supabase URL and Publishable key first.");
-  const email=prompt("Email:");
-  if(!email)return;
-  const password=prompt("Password (6+ characters):");
-  if(!password)return;
-  const {error}=await supabaseClient.auth.signUp({email,password});
-  if(error) return alert(error.message);
-  alert("Account created. Check your email if confirmation is enabled.");
-}
-async function login(){
-  if(!supabaseClient)return alert("Add your Supabase URL and Publishable key first.");
-  const email=prompt("Email:");
-  if(!email)return;
-  const password=prompt("Password:");
-  if(!password)return;
-  const {error}=await supabaseClient.auth.signInWithPassword({email,password});
-  if(error)return alert(error.message);
-  alert("Logged in successfully!");
-}
-async function logout(){
-  if(supabaseClient) await supabaseClient.auth.signOut();
-  closeModal();
-}
-function showAuth(){
-  document.getElementById("modalTitle").textContent=currentUser?"👤 Account":"🔐 Auvra Account";
-  document.getElementById("modalBody").innerHTML=currentUser
-    ? `<p>Signed in as <b>${currentUser.email||"Auvra user"}</b></p><button class="buy" onclick="logout()">Log out</button>`
-    : `<p>Sign in to sync your wishlist across devices.</p><button class="buy" onclick="login()">Log in</button><button class="compare" onclick="signUp()">Create account</button>`;
-  document.getElementById("modal").style.display="flex";
-}
-
-function money(n){return "₹"+n.toLocaleString("en-IN")}
-async function renderProducts(){
-  const q=document.getElementById("search").value.toLowerCase().trim();
-
-  if(!q){
-    const list=products.filter(
-      p=>category==="All"||p.category===category
-    );
-
-    document.getElementById("sectionTitle").textContent=
-      category==="All"?"Trending picks":category;
-
-    document.getElementById("count").textContent=
-      list.length+" items";
-
-    const grid=document.getElementById("grid");
-
-    grid.innerHTML=list.length
-      ?list.map(card).join("")
-      :`<div class="notice">No products found.</div>`;
-
-    return;
-  }
-
-  document.getElementById("sectionTitle").textContent=
-    `Searching for "${q}"…`;
-
-  document.getElementById("count").textContent="";
-
-  const grid=document.getElementById("grid");
-
-  grid.innerHTML=
-    `<div class="notice">🔎 Finding products…</div>`;
-
-  try{
-    const response=await fetch(
-      `/api/search?q=${encodeURIComponent(q)}`
-    );
-
-    const data=await response.json();
-
-    if(!response.ok){
-      throw new Error(data.error||"Search failed");
+  <style>
+    :root {
+      --pink: #ff5c9a;
+      --pink2: #ff8fba;
+      --ink: #25212a;
+      --muted: #7d7480;
+      --bg: #fff8fb;
+      --card: #ffffff;
+      --line: #f0e5eb;
+      --green: #218c68;
+      --shadow: 0 12px 35px rgba(70, 35, 55, 0.08);
     }
 
-    const results=data.products||[];
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
 
-    document.getElementById("sectionTitle").textContent=
-      `Results for "${q}"`;
+    html {
+      scroll-behavior: smooth;
+    }
 
-    document.getElementById("count").textContent=
-      results.length+" items";
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      min-height: 100vh;
+    }
 
-    grid.innerHTML=results.length
-      ?results.map(p=>`
-        <article class="card">
-          <div class="product-img">🛍️</div>
-          <div class="store">${p.source||"Store"}</div>
-          <div class="name">${p.title||"Product"}</div>
-          <div class="rating">
-            ⭐ ${p.rating||"—"} · ${p.reviews||0} reviews
-          </div>
-          <div class="price">
-            ${money(p.price||0)}
-            ${p.oldPrice?`<span class="old">${money(p.oldPrice)}</span>`:""}
-          </div>
-          <div class="notice">
-            ${p.delivery||""}
-          </div>
-        </article>
-      `).join("")
-      :`<div class="notice">No products found.</div>`;
+    button,
+    input {
+      font: inherit;
+    }
 
-  }catch(error){
-    console.error(error);
+    button {
+      cursor: pointer;
+    }
 
-    document.getElementById("sectionTitle").textContent=
-      "Search error";
+    .app {
+      width: 100%;
+      max-width: 1180px;
+      margin: auto;
+      padding-bottom: 90px;
+    }
 
-    document.getElementById("count").textContent="";
+    /* HEADER */
 
-    grid.innerHTML=
-      `<div class="notice">
-        <strong>Search temporarily unavailable</strong><br>
-        We couldn't load the results right now.<br>
-        Please try again in a moment.
-      </div>`;
-  }
-}
-      
- const wished=wishlist.includes(p.id);
- return `<article class="card">
-   <button class="wish" onclick="toggleWish(${p.id})">${wished?"♥":"♡"}</button>
-   <div class="product-img">${p.emoji}</div>
-   <div class="store">${p.store} • ${p.category}</div>
-   <div class="name">${p.name}</div>
-   <div class="rating">★ ${p.rating} · Demo rating</div>
-   <div class="price">${money(p.price)} <span class="old">${money(p.old)}</span></div>
-   <button class="compare" onclick="toggleCompare(${p.id})">${compare.includes(p.id)?"✓ Added to compare":"⇄ Compare"}</button>
-   <a class="buy" href="${p.link}" onclick="affiliateNotice(event,${p.id})" style="display:block;text-align:center;text-decoration:none">View deal →</a>
- </article>`;
-}
-function setCategory(c){category=c;renderProducts();document.getElementById("products").scrollIntoView({behavior:"smooth"})}
-function toggleWish(id){
- if(supabaseClient){
-   if(!currentUser){showAuth();return;}
-   return toggleCloudWish(id);
- }
- wishlist=wishlist.includes(id)?wishlist.filter(x=>x!==id):[...wishlist,id];
- localStorage.setItem("auvraWishlist",JSON.stringify(wishlist));renderProducts();
-}
-function toggleCompare(id){
- if(compare.includes(id)) compare=compare.filter(x=>x!==id);
- else if(compare.length<4) compare.push(id);
- else return alert("You can compare up to 4 products.");
- renderProducts();
-}
-function showCompare(){
- if(!compare.length){alert("Add products using the Compare button first.");return}
- const items=products.filter(p=>compare.includes(p.id));
- document.getElementById("modalTitle").textContent="Compare selected products";
- document.getElementById("modalBody").innerHTML=items.map(p=>`<div class="row"><span>${p.emoji} ${p.name}</span><b>${money(p.price)}</b></div>`).join("")+
- `<p class="notice">Demo comparison data. Replace these products, prices and affiliate links with approved retailer/API/feed data before launch.</p>`;
- document.getElementById("modal").style.display="flex";
-}
-function showWishlist(){
- const items=products.filter(p=>wishlist.includes(p.id));
- document.getElementById("modalTitle").textContent="♡ Your wishlist";
- document.getElementById("modalBody").innerHTML=items.length?items.map(p=>`<div class="row"><span>${p.emoji} ${p.name}</span><b>${money(p.price)}</b></div>`).join(""):"<p>No saved products yet. Tap ♡ on a product to save it.</p>";
- document.getElementById("modal").style.display="flex";
-}
-function closeModal(){document.getElementById("modal").style.display="none"}
-function affiliateNotice(e,id){
- if(products.find(p=>p.id===id).link==="#"){
-   e.preventDefault();
-   alert("Affiliate placeholder: replace this # with your approved affiliate tracking URL.");
- }
-}
-try {
-  renderProducts();
-} catch (error) {
-  document.getElementById("grid").innerHTML =
-    '<div class="notice"><strong>Auvra JavaScript error:</strong><br>' +
-    error.message +
-    '</div>';
-  console.error(error);
-}
-</script>
-</body>
-</html>
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      background: rgba(255, 248, 251, 0.94);
+      backdrop-filter: blur(15px);
+      border-bottom: 1px solid var(--line);
+    }
+
+    .header-inner {
+      max-width: 1180px;
+      margin: auto;
+      padding: 14px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .brand {
+      border: 0;
+      background: transparent;
+      text-align: left;
+    }
+
+    .brand-name {
+      font-size: 25px;
+      font-weight: 900;
+      letter-spacing: -1px;
+    }
+
+    .brand-tagline {
+      color: var(--muted);
+      font-size: 11px;
+      margin-top: 2px;
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .icon-btn {
+      width: 42px;
+      height: 42px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: white;
+      display: grid;
+      place-items: center;
+      font-size: 19px;
+      box-shadow: 0 4px 15px rgba(50, 20, 40, 0.04);
+    }
+
+    .icon-btn:active {
+      transform: scale(0.96);
+    }
+
+    /* SEARCH */
+
+    .search-wrap {
+      padding: 16px 18px 4px;
+    }
+
+    .search-box {
+      max-width: 850px;
+      margin: auto;
+      position: relative;
+    }
+
+    .search-icon {
+      position: absolute;
+      left: 16px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--muted);
+      font-size: 18px;
+    }
+
+    #searchInput {
+      width: 100%;
+      border: 1px solid var(--line);
+      background: white;
+      border-radius: 18px;
+      padding: 16px 48px 16px 46px;
+      outline: none;
+      box-shadow: var(--shadow);
+      font-size: 15px;
+    }
+
+    #searchInput:focus {
+      border-color: var(--pink2);
+      box-shadow: 0 0 0 4px rgba(255, 92, 154, 0.08);
+    }
+
+    .clear-search {
+      position: absolute;
+      right: 13px;
+      top: 50%;
+      transform: translateY(-50%);
+      border: 0;
+      background: #f6eef2;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: none;
+    }
+
+    /* HERO */
+
+    .hero {
+      margin: 20px 18px;
+      padding: 28px 22px;
+      border-radius: 28px;
+      background:
+        radial-gradient(circle at 85% 20%, rgba(255, 143, 186, 0.35), transparent 35%),
+        linear-gradient(135deg, #fff0f6, #ffffff);
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow);
+    }
+
+    .hero-badge {
+      display: inline-block;
+      background: white;
+      border: 1px solid var(--line);
+      padding: 7px 11px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--pink);
+      margin-bottom: 13px;
+    }
+
+    .hero h1 {
+      font-size: clamp(30px, 7vw, 52px);
+      line-height: 1.02;
+      letter-spacing: -2px;
+      max-width: 700px;
+    }
+
+    .hero h1 span {
+      color: var(--pink);
+    }
+
+    .hero p {
+      color: var(--muted);
+      max-width: 620px;
+      margin-top: 13px;
+      line-height: 1.55;
+      font-size: 14px;
+    }
+
+    /* CATEGORIES */
+
+    .section {
+      padding: 8px 18px 0;
+    }
+
+    .section-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 13px;
+    }
+
+    .section-title {
+      font-size: 21px;
+      font-weight: 850;
+      letter-spacing: -0.5px;
+    }
+
+    .text-btn {
+      border: 0;
+      background: transparent;
+      color: var(--pink);
+      font-weight: 700;
+      font-size: 13px;
+    }
+
+    .categories {
+      display: flex;
+      gap: 9px;
+      overflow-x: auto;
+      padding-bottom: 7px;
+      scrollbar-width: none;
+    }
+
+    .categories::-webkit-scrollbar {
+      display: none;
+    }
+
+    .category {
+      flex: 0 0 auto;
+      border: 1px solid var(--line);
+      background: white;
+      border-radius: 999px;
+      padding: 10px 15px;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .category.active {
+      background: var(--pink);
+      border-color: var(--pink);
+      color: white;
+    }
+
+    /* PRODUCTS */
+
+    .products {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 13px;
+    }
+
+    .product-card {
+      background: white;
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow: 0 7px 24px rgba(70, 35, 55, 0.055);
+      min-width: 0;
+    }
+
+    .product-image {
+      height: 165px;
+      background: #f8f3f6;
+      display: grid;
+      place-items: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .product-image img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
+      background: white;
+    }
+
+    .image-placeholder {
+      font-size: 48px;
+    }
+
+    .heart {
+      position: absolute;
+      top: 9px;
+      right: 9px;
+      width: 34px;
+      height: 34px;
+      border: 0;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.94);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+      z-index: 2;
+    }
+
+    .heart.active {
+      color: var(--pink);
+    }
+
+    .product-body {
+      padding: 13px;
+    }
+
+    .product-source {
+      font-size: 10px;
+      color: var(--pink);
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+
+    .product-title {
+      font-size: 14px;
+      font-weight: 750;
+      line-height: 1.3;
+      margin: 5px 0 8px;
+      min-height: 36px;
+    }
+
+    .price-row {
+      display: flex;
+      align-items: baseline;
+      gap: 7px;
+      flex-wrap: wrap;
+    }
+
+    .price {
+      font-size: 19px;
+      font-weight: 900;
+    }
+
+    .old-price {
+      font-size: 11px;
+      color: #aaa;
+      text-decoration: line-through;
+    }
+
+    .rating {
+      font-size: 11px;
+      color: #806f78;
+      margin-top: 6px;
+    }
+
+    .product-actions {
+      display: flex;
+      gap: 7px;
+      margin-top: 12px;
+    }
+
+    .small-btn {
+      flex: 1;
+      border: 1px solid var(--line);
+      background: white;
+      border-radius: 11px;
+      padding: 9px 5px;
+      font-size: 11px;
+      font-weight: 750;
+    }
+
+    .small-btn.primary {
+      background: var(--pink);
+      border-color: var(--pink);
+      color: white;
+    }
+
+    .small-btn:active {
+      transform: scale(0.98);
+    }
+
+    /* LOADING */
+
+    .loading {
+      grid-column: 1 / -1;
+      padding: 45px 20px;
+      text-align: center;
+      color: var(--muted);
+    }
+
+    .spinner {
+      width: 34px;
+      height: 34px;
+      border: 3px solid #f2dce6;
+      border-top-color: var(--pink);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 12px;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    .empty {
+      grid-column: 1 / -1;
+      background: white;
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      padding: 35px 20px;
+      text-align: center;
+      color: var(--muted);
+    }
+
+    .error-box {
+      grid-column: 1 / -1;
+      background: #fff4f4;
+      border: 1px solid #f2d2d2;
+      border-radius: 18px;
+      padding: 22px;
+      text-align: center;
+    }
+
+    .error-box strong {
+      display: block;
+      margin-bottom: 7px;
+    }
+
+    .error-box p {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .retry-btn {
+      margin-top: 13px;
+      border: 0;
+      background: var(--pink);
+      color: white;
+      border-radius: 11px;
+      padding: 10px 16px;
+      font-weight: 700;
+    }
+
+    /* COMPARE BAR */
+
+    .compare-bar {
+      position: fixed;
+      left: 50%;
+      bottom: 76px;
+      transform: translateX(-50%);
+      width: min(calc(100% - 30px), 600px);
+      background: #25212a;
+      color: white;
+      padding: 12px 15px;
+      border-radius: 17px;
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      z-index: 40;
+      box-shadow: 0 12px 35px rgba(0,0,0,0.22);
+    }
+
+    .compare-bar.show {
+      display: flex;
+    }
+
+    .compare-bar button {
+      border: 0;
+      background: white;
+      color: #25212a;
+      border-radius: 10px;
+      padding: 9px 13px;
+      font-weight: 800;
+      font-size: 12px;
+    }
+
+    /* BOTTOM NAV */
+
+    .bottom-nav {
+      position: fixed;
+      left: 50%;
+      bottom: 12px;
+      transform: translateX(-50%);
+      width: min(calc(100% - 24px), 600
