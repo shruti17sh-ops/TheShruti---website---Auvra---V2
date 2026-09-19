@@ -11,7 +11,15 @@
   <title>Auvra — Find your everyday</title>
 
   <style>
+@keyframes pulse {
+  0%, 100% {
+    opacity: 0.55;
+  }
 
+  50% {
+    opacity: 1;
+  }
+}
     * {
       box-sizing: border-box;
       margin: 0;
@@ -728,9 +736,10 @@
 
 </nav>
 <script>
-const searchInput = document.querySelector(
-  '.search-box input'
-);
+<script>
+
+const searchInput =
+  document.querySelector('.search-box input');
 
 const productsContainer =
   document.querySelector('.products');
@@ -739,28 +748,432 @@ const originalProducts =
   productsContainer.innerHTML;
 
 
+/* --------------------------------
+   SEARCH STATE
+-------------------------------- */
+
+let searchTimer = null;
+
+let activeController = null;
+
+let searchCache = new Map();
+
+
+/* --------------------------------
+   ESCAPE HTML
+-------------------------------- */
+
+function escapeHtml(value) {
+
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+
+}
+
+
+/* --------------------------------
+   LOADING UI
+-------------------------------- */
+
+function showLoading() {
+
+  productsContainer.innerHTML = `
+
+    <div style="
+      grid-column:1/-1;
+      display:grid;
+      grid-template-columns:repeat(2,minmax(0,1fr));
+      gap:12px;
+    ">
+
+      <div class="product">
+        <div class="product-image"
+          style="animation:pulse 1.2s infinite;">
+        </div>
+
+        <div class="product-info">
+          <div style="
+            height:12px;
+            background:#f0e5eb;
+            border-radius:6px;
+            margin-bottom:10px;
+          "></div>
+
+          <div style="
+            height:14px;
+            background:#f0e5eb;
+            border-radius:6px;
+            width:80%;
+          "></div>
+        </div>
+      </div>
+
+
+      <div class="product">
+        <div class="product-image"
+          style="animation:pulse 1.2s infinite;">
+        </div>
+
+        <div class="product-info">
+          <div style="
+            height:12px;
+            background:#f0e5eb;
+            border-radius:6px;
+            margin-bottom:10px;
+          "></div>
+
+          <div style="
+            height:14px;
+            background:#f0e5eb;
+            border-radius:6px;
+            width:75%;
+          "></div>
+        </div>
+      </div>
+
+    </div>
+
+  `;
+}
+
+
+/* --------------------------------
+   IMAGE
+-------------------------------- */
+
+function productImage(product) {
+
+  if (!product.thumbnail) {
+    return '🛍️';
+  }
+
+  return `
+
+    <img
+      src="${escapeHtml(product.thumbnail)}"
+      alt="${escapeHtml(product.title || 'Product')}"
+      loading="lazy"
+      style="
+        width:100%;
+        height:100%;
+        object-fit:contain;
+      "
+    >
+
+  `;
+
+}
+
+
+/* --------------------------------
+   RENDER PRODUCTS
+-------------------------------- */
+
+function renderSearchResults(products) {
+
+  if (!products.length) {
+
+    productsContainer.innerHTML = `
+
+      <div style="
+        grid-column:1/-1;
+        text-align:center;
+        padding:50px 10px;
+      ">
+
+        <div style="font-size:42px;">
+          🛍️
+        </div>
+
+        <h3 style="margin-top:12px;">
+          No products found
+        </h3>
+
+        <p style="
+          margin-top:7px;
+          color:#7d7480;
+        ">
+          Try a different search.
+        </p>
+
+      </div>
+
+    `;
+
+    return;
+  }
+
+
+  productsContainer.innerHTML =
+    products.map(product => {
+
+      const price =
+        product.price != null
+          ? `₹${Number(product.price)
+              .toLocaleString('en-IN')}`
+          : 'Price unavailable';
+
+
+      const oldPrice =
+        product.oldPrice != null
+          ? `₹${Number(product.oldPrice)
+              .toLocaleString('en-IN')}`
+          : '';
+
+
+      const rating =
+        product.rating != null
+          ? `★ ${product.rating}`
+          : '';
+
+
+      const reviews =
+        product.reviews
+          ? ` · ${product.reviews} reviews`
+          : '';
+
+
+      return `
+
+        <article class="product">
+
+          <div class="product-image">
+            ${productImage(product)}
+          </div>
+
+          <div class="product-info">
+
+            <div class="product-source">
+              ${escapeHtml(
+                product.source || 'Retailer'
+              )}
+            </div>
+
+            <div class="product-title">
+              ${escapeHtml(
+                product.title || 'Product'
+              )}
+            </div>
+
+            <div class="product-price">
+
+              ${price}
+
+              ${
+                oldPrice
+                  ? `
+                    <span class="product-old">
+                      ${oldPrice}
+                    </span>
+                  `
+                  : ''
+              }
+
+            </div>
+
+            <div class="product-rating">
+              ${rating}${reviews}
+            </div>
+
+          </div>
+
+        </article>
+
+      `;
+
+    }).join('');
+
+}
+
+
+/* --------------------------------
+   SEARCH
+-------------------------------- */
+
 async function searchAuvra(query) {
 
   query = query.trim();
 
+
+  /* Empty search */
+
   if (!query) {
+
+    if (activeController) {
+      activeController.abort();
+    }
+
     productsContainer.innerHTML =
       originalProducts;
+
     return;
   }
 
-  productsContainer.innerHTML = `
-    <div style="
-      grid-column:1/-1;
-      text-align:center;
-      padding:40px 10px;
-    ">
-      <div style="font-size:30px;">🔎</div>
-      <p style="margin-top:10px;">
-        Finding your options...
-      </p>
-    </div>
-  `;
+
+  /* Cancel previous request */
+
+  if (activeController) {
+    activeController.abort();
+  }
+
+
+  /* Cache */
+
+  const cacheKey =
+    query.toLowerCase();
+
+
+  if (searchCache.has(cacheKey)) {
+
+    renderSearchResults(
+      searchCache.get(cacheKey)
+    );
+
+    return;
+  }
+
+
+  /* Loading */
+
+  showLoading();
+
+
+  /* New request controller */
+
+  activeController =
+    new AbortController();
+
+
+  try {
+
+    const response = await fetch(
+
+      '/api/search?q=' +
+      encodeURIComponent(query),
+
+      {
+        signal:
+          activeController.signal
+      }
+
+    );
+
+
+    const data =
+      await response.json();
+
+
+    if (!response.ok) {
+
+      throw new Error(
+        data.error ||
+        'Search failed'
+      );
+
+    }
+
+
+    const products =
+      data.products || [];
+
+
+    /* Save result */
+
+    searchCache.set(
+      cacheKey,
+      products
+    );
+
+
+    /* Render */
+
+    renderSearchResults(products);
+
+
+  } catch (error) {
+
+    /* Ignore cancelled searches */
+
+    if (
+      error.name ===
+      'AbortError'
+    ) {
+      return;
+    }
+
+
+    console.error(
+      'Auvra search error:',
+      error
+    );
+
+
+    productsContainer.innerHTML = `
+
+      <div style="
+        grid-column:1/-1;
+        text-align:center;
+        padding:50px 10px;
+      ">
+
+        <div style="font-size:42px;">
+          ⚠️
+        </div>
+
+        <h3 style="margin-top:12px;">
+          Search temporarily unavailable
+        </h3>
+
+        <p style="
+          margin-top:7px;
+          color:#7d7480;
+        ">
+          Please try again.
+        </p>
+
+      </div>
+
+    `;
+
+  }
+
+}
+
+
+/* --------------------------------
+   SMART INPUT
+-------------------------------- */
+
+searchInput.addEventListener(
+  'input',
+  function() {
+
+    clearTimeout(searchTimer);
+
+
+    const query =
+      this.value;
+
+
+    /*
+      Don't immediately search.
+      Wait until the user pauses.
+    */
+
+    searchTimer =
+      setTimeout(
+        () => searchAuvra(query),
+        600
+      );
+
+  }
+);
+
+</script>
 
 
   try {
@@ -786,145 +1199,11 @@ async function searchAuvra(query) {
 
     if (!results.length) {
 
-      productsContainer.innerHTML = `
-        <div style="
-          grid-column:1/-1;
-          text-align:center;
-          padding:40px 10px;
-        ">
-          <div style="font-size:40px;">🛍️</div>
 
-          <h3 style="margin-top:10px;">
-            No products found
-          </h3>
-
-          <p style="
-            margin-top:6px;
-            color:#7d7480;
-          ">
-            Try another search.
-          </p>
-        </div>
-      `;
-
-      return;
-    }
+        
 
 
-    productsContainer.innerHTML =
-      results.map(product => {
-
-        const price =
-          product.price != null
-            ? `₹${Number(product.price).toLocaleString('en-IN')}`
-            : 'Price unavailable';
-
-
-        const oldPrice =
-          product.oldPrice != null
-            ? `₹${Number(product.oldPrice).toLocaleString('en-IN')}`
-            : '';
-
-
-        const image =
-          product.thumbnail
-            ? `
-              <img
-                src="${product.thumbnail}"
-                alt="${escapeHtml(product.title)}"
-                loading="lazy"
-                style="
-                  width:100%;
-                  height:100%;
-                  object-fit:contain;
-                "
-              >
-            `
-            : '🛍️';
-
-
-        const rating =
-          product.rating != null
-            ? `★ ${product.rating}`
-            : '';
-
-
-        const reviews =
-          product.reviews
-            ? ` · ${product.reviews} reviews`
-            : '';
-
-
-        return `
-
-          <article class="product">
-
-            <div class="product-image">
-              ${image}
-            </div>
-
-            <div class="product-info">
-
-              <div class="product-source">
-                ${escapeHtml(product.source || 'Retailer')}
-              </div>
-
-              <div class="product-title">
-                ${escapeHtml(product.title || 'Product')}
-              </div>
-
-              <div class="product-price">
-                ${price}
-
-                ${
-                  oldPrice
-                    ? `<span class="product-old">
-                        ${oldPrice}
-                       </span>`
-                    : ''
-                }
-              </div>
-
-              <div class="product-rating">
-                ${rating}${reviews}
-              </div>
-
-            </div>
-
-          </article>
-
-        `;
-
-      }).join('');
-
-
-  } catch (error) {
-
-    console.error(error);
-
-    productsContainer.innerHTML = `
-      <div style="
-        grid-column:1/-1;
-        text-align:center;
-        padding:40px 10px;
-      ">
-
-        <div style="font-size:40px;">
-          ⚠️
-        </div>
-
-        <h3 style="margin-top:10px;">
-          Search temporarily unavailable
-        </h3>
-
-        <p style="
-          margin-top:6px;
-          color:#7d7480;
-        ">
-          Please try again.
-        </p>
-
-      </div>
+    >
     `;
   }
 }
@@ -932,22 +1211,6 @@ async function searchAuvra(query) {
 
 function escapeHtml(value) {
 
-  return String(value)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
-
-}
-
-
-let searchTimer;
-
-
-searchInput.addEventListener(
-  'input',
-  function() {
 
     clearTimeout(searchTimer);
 
