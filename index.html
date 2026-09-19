@@ -2,35 +2,731 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Auvra Test</title>
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>Auvra — Find your everyday</title>
+
+  <style>
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: Arial, sans-serif;
+      background: #fff8fb;
+      color: #25212a;
+    }
+
+    button,
+    input {
+      font: inherit;
+    }
+
+    .app {
+      max-width: 1100px;
+      margin: auto;
+      min-height: 100vh;
+      padding-bottom: 90px;
+    }
+
+    /* HEADER */
+
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+
+      background: rgba(255,255,255,0.95);
+      backdrop-filter: blur(12px);
+
+      border-bottom: 1px solid #f0e5eb;
+
+      padding: 16px;
+    }
+
+    .header-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .logo {
+      font-size: 26px;
+      font-weight: 800;
+      letter-spacing: -1px;
+    }
+
+    .tagline {
+      font-size: 11px;
+      color: #7d7480;
+      margin-top: 3px;
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .icon-btn {
+      width: 40px;
+      height: 40px;
+
+      border: 1px solid #f0e5eb;
+      border-radius: 12px;
+
+      background: white;
+      cursor: pointer;
+    }
+
+    /* SEARCH */
+
+    .search-area {
+      padding: 18px 16px 8px;
+    }
+
+    .search-box {
+      display: flex;
+      align-items: center;
+
+      background: white;
+      border: 1px solid #eadde5;
+
+      border-radius: 16px;
+
+      padding: 0 14px;
+
+      box-shadow: 0 4px 20px rgba(50,20,40,0.04);
+    }
+
+    .search-icon {
+      font-size: 20px;
+      margin-right: 10px;
+    }
+
+    .search-box input {
+      width: 100%;
+
+      border: none;
+      outline: none;
+
+      padding: 15px 0;
+
+      background: transparent;
+
+      font-size: 15px;
+    }
+
+    /* HERO */
+
+    .hero {
+      margin: 16px;
+
+      border-radius: 24px;
+
+      padding: 28px 22px;
+
+      background:
+        linear-gradient(
+          135deg,
+          #ffe4ef,
+          #fff0f6
+        );
+    }
+
+    .hero small {
+      color: #8c6878;
+      font-weight: 600;
+    }
+
+    .hero h1 {
+      margin-top: 8px;
+
+      font-size: 30px;
+      line-height: 1.1;
+
+      letter-spacing: -1px;
+    }
+
+    .hero p {
+      margin-top: 10px;
+
+      color: #71656c;
+
+      line-height: 1.5;
+    }
+
+    /* SECTION */
+
+    .section {
+      padding: 12px 16px;
+    }
+
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+
+      margin-bottom: 12px;
+    }
+
+    .section-title {
+      font-size: 19px;
+      font-weight: 700;
+    }
+
+    .view-all {
+      border: none;
+      background: transparent;
+
+      color: #e94d8c;
+
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    /* CATEGORIES */
+
+    .categories {
+      display: flex;
+      gap: 10px;
+
+      overflow-x: auto;
+
+      padding-bottom: 8px;
+
+      scrollbar-width: none;
+    }
+
+    .categories::-webkit-scrollbar {
+      display: none;
+    }
+
+    .category {
+      flex: 0 0 auto;
+
+      padding: 10px 15px;
+
+      border-radius: 999px;
+
+      border: 1px solid #eadde5;
+
+      background: white;
+
+      cursor: pointer;
+
+      white-space: nowrap;
+    }
+
+    .category.active {
+      background: #25212a;
+      color: white;
+      border-color: #25212a;
+    }
+
+    /* PRODUCTS */
+
+    .products {
+      display: grid;
+
+      grid-template-columns:
+        repeat(2, minmax(0,1fr));
+
+      gap: 12px;
+    }
+
+    .product {
+      background: white;
+
+      border: 1px solid #f0e5eb;
+
+      border-radius: 18px;
+
+      overflow: hidden;
+
+      box-shadow:
+        0 5px 18px rgba(50,20,40,0.04);
+    }
+
+    .product-image {
+      height: 145px;
+
+      background: #f7f1f4;
+
+      display: flex;
+
+      align-items: center;
+      justify-content: center;
+
+      font-size: 48px;
+    }
+
+    .product-info {
+      padding: 12px;
+    }
+
+    .product-source {
+      font-size: 11px;
+      color: #8b8088;
+
+      margin-bottom: 5px;
+    }
+
+    .product-title {
+      font-size: 14px;
+
+      line-height: 1.35;
+
+      min-height: 38px;
+    }
+
+    .product-price {
+      margin-top: 8px;
+
+      font-size: 18px;
+
+      font-weight: 800;
+    }
+
+    .product-old {
+      margin-left: 5px;
+
+      font-size: 12px;
+
+      color: #999;
+
+      text-decoration: line-through;
+
+      font-weight: normal;
+    }
+
+    .product-rating {
+      margin-top: 7px;
+
+      font-size: 12px;
+
+      color: #6c6269;
+    }
+
+    /* DESKTOP */
+
+    @media (min-width: 700px) {
+
+      .products {
+        grid-template-columns:
+          repeat(4, minmax(0,1fr));
+      }
+
+      .hero {
+        padding: 45px;
+      }
+
+      .hero h1 {
+        font-size: 42px;
+      }
+
+    }
+
+    /* BOTTOM NAV */
+
+    .bottom-nav {
+
+      position: fixed;
+
+      bottom: 0;
+      left: 0;
+      right: 0;
+
+      z-index: 50;
+
+      background: rgba(255,255,255,0.96);
+
+      backdrop-filter: blur(12px);
+
+      border-top: 1px solid #f0e5eb;
+
+      display: flex;
+
+      justify-content: center;
+    }
+
+    .bottom-inner {
+
+      width: 100%;
+      max-width: 600px;
+
+      display: flex;
+
+      justify-content: space-around;
+
+      padding: 10px 8px;
+
+    }
+
+    .nav-item {
+
+      border: none;
+
+      background: transparent;
+
+      color: #817780;
+
+      font-size: 11px;
+
+      display: flex;
+
+      flex-direction: column;
+
+      align-items: center;
+
+      gap: 4px;
+
+      cursor: pointer;
+
+    }
+
+    .nav-icon {
+      font-size: 21px;
+    }
+
+    .nav-item.active {
+      color: #e94d8c;
+      font-weight: 700;
+    }
+
+  </style>
 </head>
 
 <body>
 
-  <div style="
-    min-height:100vh;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    flex-direction:column;
-    font-family:Arial,sans-serif;
-    text-align:center;
-  ">
+<div class="app">
 
-    <h1 style="font-size:48px;">
-      Auvra
+  <!-- HEADER -->
+
+  <header>
+
+    <div class="header-row">
+
+      <div>
+        <div class="logo">Auvra</div>
+        <div class="tagline">Find your everyday.</div>
+      </div>
+
+      <div class="header-actions">
+
+        <button class="icon-btn" aria-label="Wishlist">
+          ♡
+        </button>
+
+        <button class="icon-btn" aria-label="Account">
+          ◯
+        </button>
+
+      </div>
+
+    </div>
+
+  </header>
+
+
+  <!-- SEARCH -->
+
+  <section class="search-area">
+
+    <div class="search-box">
+
+      <span class="search-icon">⌕</span>
+
+      <input
+        type="search"
+        placeholder="Search products, brands or categories..."
+      >
+
+    </div>
+
+  </section>
+
+
+  <!-- HERO -->
+
+  <section class="hero">
+
+    <small>SHOP SMARTER</small>
+
+    <h1>
+      Find what you need.<br>
+      Compare before you buy.
     </h1>
 
-    <p style="font-size:20px;">
-      Find your everyday.
+    <p>
+      Search products across shopping platforms
+      and discover your everyday options in one place.
     </p>
 
-    <p>
-      ✅ Auvra HTML is working
-    </p>
+  </section>
+
+
+  <!-- CATEGORIES -->
+
+  <section class="section">
+
+    <div class="section-header">
+
+      <div class="section-title">
+        Explore
+      </div>
+
+      <button class="view-all">
+        View all
+      </button>
+
+    </div>
+
+    <div class="categories">
+
+      <button class="category active">
+        All
+      </button>
+
+      <button class="category">
+        Electronics
+      </button>
+
+      <button class="category">
+        Fashion
+      </button>
+
+      <button class="category">
+        Beauty
+      </button>
+
+      <button class="category">
+        Home
+      </button>
+
+      <button class="category">
+        Fitness
+      </button>
+
+      <button class="category">
+        Grocery
+      </button>
+
+      <button class="category">
+        Mobiles
+      </button>
+
+      <button class="category">
+        Gaming
+      </button>
+
+    </div>
+
+  </section>
+
+
+  <!-- PRODUCTS -->
+
+  <section class="section">
+
+    <div class="section-header">
+
+      <div class="section-title">
+        Trending picks
+      </div>
+
+    </div>
+
+    <div class="products">
+
+      <article class="product">
+
+        <div class="product-image">
+          🎧
+        </div>
+
+        <div class="product-info">
+
+          <div class="product-source">
+            Demo Store
+          </div>
+
+          <div class="product-title">
+            Wireless Noise-Cancel Headphones
+          </div>
+
+          <div class="product-price">
+            ₹1,999
+
+            <span class="product-old">
+              ₹2,999
+            </span>
+          </div>
+
+          <div class="product-rating">
+            ★ 4.5 · 1,200 reviews
+          </div>
+
+        </div>
+
+      </article>
+
+
+      <article class="product">
+
+        <div class="product-image">
+          ⌚
+        </div>
+
+        <div class="product-info">
+
+          <div class="product-source">
+            Demo Store
+          </div>
+
+          <div class="product-title">
+            Smart Fitness Watch
+          </div>
+
+          <div class="product-price">
+            ₹1,499
+
+            <span class="product-old">
+              ₹2,199
+            </span>
+          </div>
+
+          <div class="product-rating">
+            ★ 4.3 · 890 reviews
+          </div>
+
+        </div>
+
+      </article>
+
+
+      <article class="product">
+
+        <div class="product-image">
+          👟
+        </div>
+
+        <div class="product-info">
+
+          <div class="product-source">
+            Demo Store
+          </div>
+
+          <div class="product-title">
+            Everyday Comfort Sneakers
+          </div>
+
+          <div class="product-price">
+            ₹1,299
+
+            <span class="product-old">
+              ₹1,999
+            </span>
+
+          </div>
+
+          <div class="product-rating">
+            ★ 4.4 · 1,050 reviews
+          </div>
+
+        </div>
+
+      </article>
+
+
+      <article class="product">
+
+        <div class="product-image">
+          👜
+        </div>
+
+        <div class="product-info">
+
+          <div class="product-source">
+            Demo Store
+          </div>
+
+          <div class="product-title">
+            Minimal Everyday Handbag
+          </div>
+
+          <div class="product-price">
+            ₹899
+
+            <span class="product-old">
+              ₹1,499
+            </span>
+
+          </div>
+
+          <div class="product-rating">
+            ★ 4.6 · 760 reviews
+          </div>
+
+        </div>
+
+      </article>
+
+    </div>
+
+  </section>
+
+</div>
+
+
+<!-- BOTTOM NAV -->
+
+<nav class="bottom-nav">
+
+  <div class="bottom-inner">
+
+    <button class="nav-item active">
+
+      <span class="nav-icon">⌂</span>
+
+      Home
+
+    </button>
+
+    <button class="nav-item">
+
+      <span class="nav-icon">⌕</span>
+
+      Search
+
+    </button>
+
+    <button class="nav-item">
+
+      <span class="nav-icon">♡</span>
+
+      Wishlist
+
+    </button>
+
+    <button class="nav-item">
+
+      <span class="nav-icon">◯</span>
+
+      Account
+
+    </button>
 
   </div>
 
+</nav>
+
 </body>
-</html>
+      </html>
