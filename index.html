@@ -408,7 +408,8 @@
       color: #e94d8c;
       font-weight: 700;
     }
-
+<script 
+    src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">
   </style>
 </head>
 
@@ -433,8 +434,12 @@
           ♡
         </button>
 
-        <button class="icon-btn" aria-label="Account">
-          ◯
+        <button
+  class="icon-btn"
+  aria-label="Account"
+  onclick="openAccount()"
+>
+  ◯
         </button>
 
       </div>
@@ -724,17 +729,208 @@
 
     </button>
 
-    <button class="nav-item">
+    <button
+  class="nav-item"
+  onclick="openAccount()"
+>
 
-      <span class="nav-icon">◯</span>
+  <span class="nav-icon">◯</span>
 
-      Account
+  Account
 
     </button>
 
   </div>
 
 </nav>
+  <!-- ACCOUNT MODAL -->
+
+<div
+  id="accountModal"
+  style="
+    display:none;
+    position:fixed;
+    inset:0;
+    z-index:100;
+    background:rgba(0,0,0,0.35);
+    padding:20px;
+    align-items:flex-end;
+    justify-content:center;
+  "
+  onclick="closeAccount(event)"
+>
+
+  <div
+    style="
+      width:100%;
+      max-width:520px;
+      background:white;
+      border-radius:24px;
+      padding:24px;
+      box-shadow:0 20px 60px rgba(0,0,0,0.18);
+    "
+    onclick="event.stopPropagation()"
+  >
+
+    <div
+      style="
+        display:flex;
+        justify-content:space-between;
+        align-items:center;
+      "
+    >
+
+      <div>
+        <div
+          style="
+            font-size:22px;
+            font-weight:800;
+          "
+        >
+          Auvra Account
+        </div>
+
+        <div
+          id="accountStatus"
+          style="
+            margin-top:5px;
+            color:#7d7480;
+            font-size:13px;
+          "
+        >
+          Not signed in
+        </div>
+      </div>
+
+      <button
+        onclick="closeAccount()"
+        style="
+          border:none;
+          background:#f7f1f4;
+          width:36px;
+          height:36px;
+          border-radius:50%;
+          font-size:20px;
+          cursor:pointer;
+        "
+      >
+        ×
+      </button>
+
+    </div>
+
+
+    <!-- LOGGED OUT -->
+
+    <div id="loggedOutAccount">
+
+      <button
+        onclick="showSignup()"
+        style="
+          width:100%;
+          margin-top:22px;
+          padding:14px;
+          border:none;
+          border-radius:14px;
+          background:#25212a;
+          color:white;
+          font-weight:700;
+          cursor:pointer;
+        "
+      >
+        Create account
+      </button>
+
+      <button
+        onclick="showLogin()"
+        style="
+          width:100%;
+          margin-top:10px;
+          padding:14px;
+          border:1px solid #eadde5;
+          border-radius:14px;
+          background:white;
+          color:#25212a;
+          font-weight:700;
+          cursor:pointer;
+        "
+      >
+        Log in
+      </button>
+
+    </div>
+
+
+    <!-- LOGGED IN -->
+
+    <div
+      id="loggedInAccount"
+      style="display:none;"
+    >
+
+      <div
+        id="accountEmail"
+        style="
+          margin-top:20px;
+          padding:14px;
+          background:#fff8fb;
+          border-radius:14px;
+          font-size:14px;
+        "
+      ></div>
+
+      <div
+        style="
+          margin-top:14px;
+          padding:14px;
+          background:#fff8fb;
+          border-radius:14px;
+        "
+      >
+
+        <div
+          style="
+            font-size:12px;
+            color:#7d7480;
+          "
+        >
+          Price display currency
+        </div>
+
+        <div
+          id="accountCurrency"
+          style="
+            margin-top:5px;
+            font-weight:700;
+          "
+        >
+          🇮🇳 INR
+        </div>
+
+      </div>
+
+      <button
+        onclick="logoutAuvra()"
+        style="
+          width:100%;
+          margin-top:16px;
+          padding:14px;
+          border:1px solid #eadde5;
+          border-radius:14px;
+          background:white;
+          color:#d34d76;
+          font-weight:700;
+          cursor:pointer;
+        "
+      >
+        Log out
+      </button>
+
+    </div>
+
+  </div>
+
+</div>
 <script>
 const searchInput =
   document.querySelector('.search-box input');
@@ -1171,6 +1367,460 @@ searchInput.addEventListener(
   }
 );
 
+  /* --------------------------------
+   SUPABASE
+-------------------------------- */
+
+const SUPABASE_URL =
+  "https://kdpbbledordlpjfcsvmr.supabase.co";
+
+const SUPABASE_PUBLISHABLE_KEY =
+  "sb_publishable_-B87hD40j410bA_ONXRVPw_U86YdqeC";
+
+const supabaseClient =
+  window.supabase.createClient(
+    SUPABASE_URL,
+    SUPABASE_PUBLISHABLE_KEY
+  );
+
+
+/* --------------------------------
+   ACCOUNT UI
+-------------------------------- */
+
+function openAccount() {
+
+  const modal =
+    document.getElementById("accountModal");
+
+  modal.style.display = "flex";
+
+  updateAccountUI();
+
+}
+
+
+function closeAccount(event) {
+
+  if (
+    event &&
+    event.target !== event.currentTarget
+  ) {
+    return;
+  }
+
+  document.getElementById(
+    "accountModal"
+  ).style.display = "none";
+
+}
+
+
+/* --------------------------------
+   ACCOUNT STATE
+-------------------------------- */
+
+async function updateAccountUI() {
+
+  const {
+    data: {
+      session
+    }
+  } =
+    await supabaseClient.auth.getSession();
+
+
+  const loggedOut =
+    document.getElementById(
+      "loggedOutAccount"
+    );
+
+  const loggedIn =
+    document.getElementById(
+      "loggedInAccount"
+    );
+
+  const status =
+    document.getElementById(
+      "accountStatus"
+    );
+
+
+  if (!session) {
+
+    loggedOut.style.display =
+      "block";
+
+    loggedIn.style.display =
+      "none";
+
+    status.textContent =
+      "Not signed in";
+
+    return;
+
+  }
+
+
+  loggedOut.style.display =
+    "none";
+
+  loggedIn.style.display =
+    "block";
+
+
+  status.textContent =
+    "Signed in";
+
+  document.getElementById(
+    "accountEmail"
+  ).textContent =
+    session.user.email || "";
+
+
+  await loadProfileCurrency(
+    session.user.id
+  );
+
+}
+
+
+/* --------------------------------
+   SIGN UP
+-------------------------------- */
+
+async function showSignup() {
+
+  const email =
+    prompt(
+      "Enter your email address:"
+    );
+
+  if (!email) return;
+
+
+  const password =
+    prompt(
+      "Create a password (minimum 6 characters):"
+    );
+
+  if (!password) return;
+
+
+  if (password.length < 6) {
+
+    alert(
+      "Password must be at least 6 characters."
+    );
+
+    return;
+
+  }
+
+
+  const {
+    data,
+    error
+  } =
+    await supabaseClient.auth.signUp({
+
+      email:
+        email.trim(),
+
+      password
+
+    });
+
+
+  if (error) {
+
+    alert(
+      error.message
+    );
+
+    return;
+
+  }
+
+
+  /*
+    Email confirmation may be enabled.
+    In that case Supabase can return
+    a user without an active session.
+  */
+
+  if (!data.session) {
+
+    alert(
+      "Account created! 📩\n\n" +
+      "Please check your email and confirm your account."
+    );
+
+  } else {
+
+    await ensureProfile(
+      data.user.id
+    );
+
+    alert(
+      "Welcome to Auvra! ✨"
+    );
+
+  }
+
+
+  await updateAccountUI();
+
+}
+
+
+/* --------------------------------
+   LOGIN
+-------------------------------- */
+
+async function showLogin() {
+
+  const email =
+    prompt(
+      "Enter your email address:"
+    );
+
+  if (!email) return;
+
+
+  const password =
+    prompt(
+      "Enter your password:"
+    );
+
+  if (!password) return;
+
+
+  const {
+    data,
+    error
+  } =
+    await supabaseClient.auth
+      .signInWithPassword({
+
+        email:
+          email.trim(),
+
+        password
+
+      });
+
+
+  if (error) {
+
+    alert(
+      error.message
+    );
+
+    return;
+
+  }
+
+
+  await ensureProfile(
+    data.user.id
+  );
+
+
+  alert(
+    "Logged in successfully! ✨"
+  );
+
+
+  await updateAccountUI();
+
+}
+
+
+/* --------------------------------
+   CREATE PROFILE
+-------------------------------- */
+
+async function ensureProfile(
+  userId
+) {
+
+  const {
+    data,
+    error
+  } =
+    await supabaseClient
+      .from("Profiles")
+      .select("id,currency")
+      .eq("id", userId)
+      .maybeSingle();
+
+
+  if (error) {
+
+    console.error(
+      "Profile lookup failed:",
+      error
+    );
+
+    return;
+
+  }
+
+
+  if (data) return;
+
+
+  const {
+    error:
+      insertError
+  } =
+    await supabaseClient
+      .from("Profiles")
+      .insert({
+
+        id:
+          userId,
+
+        currency:
+          "INR"
+
+      });
+
+
+  if (insertError) {
+
+    console.error(
+      "Profile creation failed:",
+      insertError
+    );
+
+  }
+
+}
+
+
+/* --------------------------------
+   LOAD PROFILE CURRENCY
+-------------------------------- */
+
+async function loadProfileCurrency(
+  userId
+) {
+
+  await ensureProfile(
+    userId
+  );
+
+
+  const {
+    data,
+    error
+  } =
+    await supabaseClient
+      .from("Profiles")
+      .select("currency")
+      .eq("id", userId)
+      .maybeSingle();
+
+
+  if (error) {
+
+    console.error(
+      "Currency lookup failed:",
+      error
+    );
+
+    return;
+
+  }
+
+
+  const currency =
+    data?.currency ||
+    "INR";
+
+
+  document.getElementById(
+    "accountCurrency"
+  ).textContent =
+    currency === "INR"
+      ? "🇮🇳 INR — Indian Rupee"
+      : currency;
+
+}
+
+
+/* --------------------------------
+   LOGOUT
+-------------------------------- */
+
+async function logoutAuvra() {
+
+  const {
+    error
+  } =
+    await supabaseClient.auth.signOut();
+
+
+  if (error) {
+
+    alert(
+      error.message
+    );
+
+    return;
+
+  }
+
+
+  alert(
+    "Logged out."
+  );
+
+
+  await updateAccountUI();
+
+}
+
+
+/* --------------------------------
+   AUTH STATE LISTENER
+-------------------------------- */
+
+supabaseClient.auth.onAuthStateChange(
+  async (
+    event,
+    session
+  ) => {
+
+    console.log(
+      "Auvra auth:",
+      event
+    );
+
+    if (
+      session &&
+      session.user
+    ) {
+
+      await ensureProfile(
+        session.user.id
+      );
+
+    }
+
+    await updateAccountUI();
+
+  }
+);
+
+
+/* --------------------------------
+   INITIAL ACCOUNT CHECK
+-------------------------------- */
+
+updateAccountUI();
 </script>
 </body>
       </html>
