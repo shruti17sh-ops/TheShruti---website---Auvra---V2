@@ -736,8 +736,6 @@
 
 </nav>
 <script>
-<script>
-
 const searchInput =
   document.querySelector('.search-box input');
 
@@ -1169,57 +1167,6 @@ searchInput.addEventListener(
         () => searchAuvra(query),
         600
       );
-
-  }
-);
-
-</script>
-
-
-  try {
-
-    const response = await fetch(
-      '/api/search?q=' +
-      encodeURIComponent(query)
-    );
-
-    const data = await response.json();
-
-
-    if (!response.ok) {
-      throw new Error(
-        data.error || 'Search failed'
-      );
-    }
-
-
-    const results =
-      data.products || [];
-
-
-    if (!results.length) {
-
-
-        
-
-
-    >
-    `;
-  }
-}
-
-
-function escapeHtml(value) {
-
-
-    clearTimeout(searchTimer);
-
-    const query = this.value;
-
-    searchTimer = setTimeout(
-      () => searchAuvra(query),
-      500
-    );
 
   }
 );
