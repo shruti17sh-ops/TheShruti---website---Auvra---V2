@@ -727,6 +727,240 @@
   </div>
 
 </nav>
+<script>
+const searchInput = document.querySelector(
+  '.search-box input'
+);
 
+const productsContainer =
+  document.querySelector('.products');
+
+const originalProducts =
+  productsContainer.innerHTML;
+
+
+async function searchAuvra(query) {
+
+  query = query.trim();
+
+  if (!query) {
+    productsContainer.innerHTML =
+      originalProducts;
+    return;
+  }
+
+  productsContainer.innerHTML = `
+    <div style="
+      grid-column:1/-1;
+      text-align:center;
+      padding:40px 10px;
+    ">
+      <div style="font-size:30px;">🔎</div>
+      <p style="margin-top:10px;">
+        Finding your options...
+      </p>
+    </div>
+  `;
+
+
+  try {
+
+    const response = await fetch(
+      '/api/search?q=' +
+      encodeURIComponent(query)
+    );
+
+    const data = await response.json();
+
+
+    if (!response.ok) {
+      throw new Error(
+        data.error || 'Search failed'
+      );
+    }
+
+
+    const results =
+      data.products || [];
+
+
+    if (!results.length) {
+
+      productsContainer.innerHTML = `
+        <div style="
+          grid-column:1/-1;
+          text-align:center;
+          padding:40px 10px;
+        ">
+          <div style="font-size:40px;">🛍️</div>
+
+          <h3 style="margin-top:10px;">
+            No products found
+          </h3>
+
+          <p style="
+            margin-top:6px;
+            color:#7d7480;
+          ">
+            Try another search.
+          </p>
+        </div>
+      `;
+
+      return;
+    }
+
+
+    productsContainer.innerHTML =
+      results.map(product => {
+
+        const price =
+          product.price != null
+            ? `₹${Number(product.price).toLocaleString('en-IN')}`
+            : 'Price unavailable';
+
+
+        const oldPrice =
+          product.oldPrice != null
+            ? `₹${Number(product.oldPrice).toLocaleString('en-IN')}`
+            : '';
+
+
+        const image =
+          product.thumbnail
+            ? `
+              <img
+                src="${product.thumbnail}"
+                alt="${escapeHtml(product.title)}"
+                loading="lazy"
+                style="
+                  width:100%;
+                  height:100%;
+                  object-fit:contain;
+                "
+              >
+            `
+            : '🛍️';
+
+
+        const rating =
+          product.rating != null
+            ? `★ ${product.rating}`
+            : '';
+
+
+        const reviews =
+          product.reviews
+            ? ` · ${product.reviews} reviews`
+            : '';
+
+
+        return `
+
+          <article class="product">
+
+            <div class="product-image">
+              ${image}
+            </div>
+
+            <div class="product-info">
+
+              <div class="product-source">
+                ${escapeHtml(product.source || 'Retailer')}
+              </div>
+
+              <div class="product-title">
+                ${escapeHtml(product.title || 'Product')}
+              </div>
+
+              <div class="product-price">
+                ${price}
+
+                ${
+                  oldPrice
+                    ? `<span class="product-old">
+                        ${oldPrice}
+                       </span>`
+                    : ''
+                }
+              </div>
+
+              <div class="product-rating">
+                ${rating}${reviews}
+              </div>
+
+            </div>
+
+          </article>
+
+        `;
+
+      }).join('');
+
+
+  } catch (error) {
+
+    console.error(error);
+
+    productsContainer.innerHTML = `
+      <div style="
+        grid-column:1/-1;
+        text-align:center;
+        padding:40px 10px;
+      ">
+
+        <div style="font-size:40px;">
+          ⚠️
+        </div>
+
+        <h3 style="margin-top:10px;">
+          Search temporarily unavailable
+        </h3>
+
+        <p style="
+          margin-top:6px;
+          color:#7d7480;
+        ">
+          Please try again.
+        </p>
+
+      </div>
+    `;
+  }
+}
+
+
+function escapeHtml(value) {
+
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+
+}
+
+
+let searchTimer;
+
+
+searchInput.addEventListener(
+  'input',
+  function() {
+
+    clearTimeout(searchTimer);
+
+    const query = this.value;
+
+    searchTimer = setTimeout(
+      () => searchAuvra(query),
+      500
+    );
+
+  }
+);
+
+</script>
 </body>
       </html>
