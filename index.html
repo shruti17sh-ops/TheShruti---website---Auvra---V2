@@ -3502,45 +3502,69 @@ async function ensureProfile(
 /* =========================================================
    LOAD PROFILE CURRENCY
 ========================================================= */
-
 async function loadProfileCurrency() {
 
-userDisplayCurrency = DEFAULT_CURRENCY;
-currentCurrency = DEFAULT_CURRENCY;
+  userDisplayCurrency =
+    DEFAULT_CURRENCY;
+
+  currentCurrency =
+    DEFAULT_CURRENCY;
 
   try {
+
     const {
       data: {
         user
       }
-    } = await supabaseClient.auth.getUser();
+    } =
+      await supabaseClient.auth.getUser();
+
+
+    /* -----------------------------------------
+       USER NOT LOGGED IN
+    ----------------------------------------- */
 
     if (!user) {
+
       const localCurrency =
-        localStorage.getItem("auvraCurrency");
-      
-     if (
-  localCurrency &&
-  CURRENCY_INFO[localCurrency]
-) {
-  userDisplayCurrency = localCurrency;
-  currentCurrency = localCurrency;
-}
+        localStorage.getItem(
+          "auvraCurrency"
+        );
+
+      if (
+        localCurrency &&
+        CURRENCY_INFO[localCurrency]
+      ) {
+
+        userDisplayCurrency =
+          localCurrency;
+
+        currentCurrency =
+          localCurrency;
+
       }
 
       return;
     }
 
+
+    /* -----------------------------------------
+       USER LOGGED IN
+    ----------------------------------------- */
+
     const {
       data,
       error
-    } = await supabaseClient
-      .from("Profiles")
-      .select("currency")
-      .eq("id", user.id)
-      .maybeSingle();
+    } =
+      await supabaseClient
+        .from("Profiles")
+        .select("currency")
+        .eq("id", user.id)
+        .maybeSingle();
+
 
     if (error) {
+
       console.error(
         "Unable to load profile currency:",
         error
@@ -3549,30 +3573,41 @@ currentCurrency = DEFAULT_CURRENCY;
       return;
     }
 
-if (
-  data?.currency &&
-  CURRENCY_INFO[data.currency]
-) {
-  userDisplayCurrency =
-    data.currency;
 
-  currentCurrency =
-    data.currency;
+    /* -----------------------------------------
+       LOAD SAVED CURRENCY
+    ----------------------------------------- */
 
-  localStorage.setItem(
-    "auvraCurrency",
-    data.currency
-  );
-}
+    if (
+      data?.currency &&
+      CURRENCY_INFO[data.currency]
+    ) {
 
-  } catch (error) {
+      userDisplayCurrency =
+        data.currency;
+
+      currentCurrency =
+        data.currency;
+
+      localStorage.setItem(
+        "auvraCurrency",
+        data.currency
+      );
+
+    }
+
+  }
+
+  catch (error) {
+
     console.error(
       "Currency profile error:",
       error
     );
-  }
-        }
 
+  }
+
+}
 
 /* =========================================================
    SAVE CURRENCY
