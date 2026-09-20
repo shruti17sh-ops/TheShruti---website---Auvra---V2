@@ -3118,7 +3118,7 @@ async function buyProduct(
   ) {
 
     showToast(
-      "This demo product has no retailer link yet."
+      "This product does not have a verified retailer link yet."
     );
 
     return;
@@ -3140,7 +3140,15 @@ async function buyProduct(
       await response.json();
 
 
+    /*
+      Auvra only uses the affiliate redirect
+      when the network confirms that the
+      click is actually monetizable.
+    */
+
     if (
+      data.destination === "affiliate" &&
+      data.affiliated === true &&
       data.tracking_url
     ) {
 
@@ -3151,16 +3159,44 @@ async function buyProduct(
 
     }
 
+
+    /*
+      No monetized route is currently available.
+      Preserve the user's shopping journey by
+      sending them to the verified retailer URL.
+    */
+
+    if (
+      data.original_url
+    ) {
+
+      window.open(
+        data.original_url,
+        "_blank",
+        "noopener"
+      );
+
+      return;
+
+    }
+
   }
 
   catch(error) {
 
     console.warn(
-      "Affiliate conversion unavailable."
+      "Auvra monetization router unavailable:",
+      error
     );
 
   }
 
+
+  /*
+    Final safety fallback:
+    if the monetization service itself fails,
+    send the user directly to the retailer.
+  */
 
   window.open(
     product.link,
@@ -3168,7 +3204,7 @@ async function buyProduct(
     "noopener"
   );
 
-}
+  }
 
 
 /* =========================================================
