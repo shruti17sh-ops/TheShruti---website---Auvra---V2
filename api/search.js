@@ -387,6 +387,7 @@
     const candidates =
       shoppingResults.slice(0, 10);
 
+      console.log("AUVRA RAW SHOPPING RESULT:", JSON.stringify(candidates[0], null, 2));
 
     const products =
       await Promise.all(
