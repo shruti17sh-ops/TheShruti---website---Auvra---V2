@@ -1176,7 +1176,7 @@
 
         <select
           id="currencySelect"
-          onchange="saveCurrencyPreference(this.value)">
+          onchange="changeAuvraCurrency(this.value)"
 
           <option value="INR">
             🇮🇳 INR — Indian Rupee
@@ -3958,7 +3958,37 @@ async function updateAccountUI() {
 
 }
 
+  async function changeAuvraCurrency(currency) {
+  if (!CURRENCY_INFO[currency]) return;
 
+  const saved = await saveUserDisplayCurrency(currency);
+
+  if (!saved) {
+    alert("We couldn't save your currency preference. Please try again.");
+    return;
+  }
+
+  updateCurrencyUI();
+
+  const query = searchInput?.value?.trim();
+
+  if (query) {
+    searchProducts(query);
+  }
+
+  if (typeof showToast === "function") {
+    showToast(`Currency changed to ${currency}`);
+  }
+  }
+
+  function updateCurrencyUI() {
+  const select = document.getElementById("currencySelect");
+
+  if (select) {
+    select.value = userDisplayCurrency;
+  }
+  }
+  
 /* =========================================================
    SEARCH INPUT
 ========================================================= */
