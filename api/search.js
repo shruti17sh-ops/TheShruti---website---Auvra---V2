@@ -1,15 +1,38 @@
-    module.exports = async (req, res) => {
+module.exports = async (req, res) => {
 
-  /* =========================================================
-     AUVRA LIVE SHOPPING SEARCH
-     Google Shopping → Seller details → Direct retailer URL
-  ========================================================= */
+  /*
+   * ============================================================
+   * AUVRA LIVE SHOPPING SEARCH
+   *
+   * Google Shopping
+   *       ↓
+   * Immersive Product / Seller data
+   *       ↓
+   * Direct retailer URL
+   *       ↓
+   * Auvra frontend
+   *
+   * IMPORTANT:
+   * We NEVER intentionally use Google's product page as
+   * the user's purchase destination.
+   * ============================================================
+   */
+
+
+  // ------------------------------------------------------------
+  // METHOD CHECK
+  // ------------------------------------------------------------
 
   if (req.method !== "GET") {
     return res.status(405).json({
       error: "Method not allowed"
     });
   }
+
+
+  // ------------------------------------------------------------
+  // SEARCH QUERY
+  // ------------------------------------------------------------
 
   const q = String(req.query?.q || "").trim();
 
@@ -18,6 +41,11 @@
       error: "Search query is required"
     });
   }
+
+
+  // ------------------------------------------------------------
+  // SERPAPI KEY
+  // ------------------------------------------------------------
 
   const key = process.env.SERPAPI_KEY;
 
@@ -28,9 +56,9 @@
   }
 
 
-  /* =========================================================
-     HELPERS
-  ========================================================= */
+  // ============================================================
+  // HELPERS
+  // ============================================================
 
   function detectCurrency(value) {
 
@@ -65,13 +93,11 @@
       return value;
     }
 
-    const cleaned =
-      String(value || "")
-        .replace(/[^0-9.,-]/g, "")
-        .replace(/,(?=\d{3})/g, "");
+    const cleaned = String(value || "")
+      .replace(/[^0-9.,-]/g, "")
+      .replace(/,(?=\d{3})/g, "");
 
-    const number =
-      Number(cleaned);
+    const number = Number(cleaned);
 
     return Number.isFinite(number)
       ? number
@@ -87,83 +113,113 @@
   }
 
 
-  function getDirectSellerLink(seller) {
+  /*
+   * Google sometimes returns:
+   *
+   * https://www.google.com/url?q=https://retailer.com/product...
+   *
+   * We unwrap the q parameter.
+   *
+   * We NEVER return a Google URL.
+   */
 
-    const link =
-      seller?.direct_link ||
-      "";
+  function unwrapRetailerLink(value) {
 
-    if (!link) {
+    const raw = String(value || "").trim();
+
+    if (!raw) {
       return "";
     }
 
     try {
 
-      const url =
-        new URL(link);
+      const url = new URL(raw);
 
       const hostname =
         url.hostname.toLowerCase();
 
-      /*
-        Never accept Google as the final retailer.
-      */
+
+      // --------------------------------------------------------
+      // GOOGLE REDIRECT
+      // --------------------------------------------------------
 
       if (
-        hostname.includes("google.com") ||
-        hostname.includes("google.co.in") ||
-        hostname.includes("googleusercontent.com")
+        hostname === "www.google.com" ||
+        hostname === "google.com" ||
+        hostname.endsWith(".google.com") ||
+        hostname === "www.google.co.in" ||
+        hostname === "google.co.in"
+      ) {
+
+        const qParam =
+          url.searchParams.get("q") ||
+          url.searchParams.get("url");
+
+        if (!qParam) {
+          return "";
+        }
+
+        return unwrapRetailerLink(
+          qParam
+        );
+      }
+
+
+      // --------------------------------------------------------
+      // BLOCK GOOGLE / SERPAPI
+      // --------------------------------------------------------
+
+      if (
+        hostname.includes("googleusercontent.com") ||
+        hostname.includes("serpapi.com")
       ) {
         return "";
       }
+
 
       return url.toString();
 
     } catch {
 
       return "";
-
     }
   }
 
 
-  /* =========================================================
-     GET DIRECT RETAILER OFFER
-  ========================================================= */
+  // ============================================================
+  // FETCH IMMERSIVE PRODUCT / SELLER DATA
+  // ============================================================
 
   async function getRetailerOffer(item) {
 
-    /*
-      SerpApi gives us this URL for the
-      Google Immersive Product data.
-    */
+    let apiUrl =
+      item?.serpapi_immersive_product_api || "";
 
-    const apiUrl =
-      item?.serpapi_immersive_product_api;
+
+    /*
+     * If SerpApi gave us the immersive endpoint,
+     * use it directly.
+     */
 
     if (!apiUrl) {
       return null;
     }
+
 
     try {
 
       const url =
         new URL(apiUrl);
 
-      /*
-        Add our private SerpApi key
-        server-side.
-      */
 
+      // Make absolutely sure our API key is attached.
       url.searchParams.set(
         "api_key",
         key
       );
 
-      /*
-        Ask SerpApi for additional stores.
-      */
 
+      // Ask SerpApi for more retailer stores.
       url.searchParams.set(
         "more_stores",
         "true"
@@ -181,73 +237,112 @@
 
 
       if (!response.ok) {
+
+        console.warn(
+          "Immersive product request failed:",
+          response.status
+        );
+
         return null;
       }
 
+
+      /*
+       * Current SerpApi structure:
+       *
+       * sellers_results:
+       *   online_sellers: [...]
+       */
 
       const sellers =
         data?.sellers_results?.online_sellers || [];
 
 
-      if (!sellers.length) {
+      if (!Array.isArray(sellers) || !sellers.length) {
         return null;
       }
 
 
-      /*
-        First try to find the seller that matches
-        the original Shopping result source.
-      */
+      // --------------------------------------------------------
+      // TRY TO MATCH THE ORIGINAL SHOPPING SOURCE
+      // --------------------------------------------------------
 
       const originalSource =
-        normalizeName(item.source);
+        normalizeName(item?.source);
 
 
       let seller =
-        sellers.find(
-          candidate =>
-            normalizeName(candidate.name) ===
+        sellers.find(candidate => {
+
+          return (
+            normalizeName(candidate?.name) ===
             originalSource
-        );
+          );
+
+        });
 
 
-      /*
-        If there isn't an exact match,
-        find a close match.
-      */
+      // Partial match if exact match failed.
 
       if (!seller && originalSource) {
 
         seller =
-          sellers.find(
-            candidate => {
+          sellers.find(candidate => {
 
-              const candidateName =
-                normalizeName(candidate.name);
+            const candidateName =
+              normalizeName(candidate?.name);
 
-              return (
-                candidateName.includes(originalSource) ||
-                originalSource.includes(candidateName)
-              );
+            return (
+              candidateName.includes(originalSource) ||
+              originalSource.includes(candidateName)
+            );
 
-            }
-          );
+          });
 
       }
 
 
       /*
-        Last resort:
-        use the first available seller.
-      */
+       * If the original seller isn't available,
+       * use the first seller that has a genuine
+       * retailer URL.
+       */
 
       if (!seller) {
-        seller = sellers[0];
+
+        seller =
+          sellers.find(candidate => {
+
+            return Boolean(
+              unwrapRetailerLink(
+                candidate?.direct_link
+              ) ||
+              unwrapRetailerLink(
+                candidate?.link
+              )
+            );
+
+          });
+
       }
 
 
+      if (!seller) {
+        return null;
+      }
+
+
+      // --------------------------------------------------------
+      // DIRECT RETAILER URL
+      // --------------------------------------------------------
+
       const directLink =
-        getDirectSellerLink(seller);
+        unwrapRetailerLink(
+          seller?.direct_link
+        ) ||
+        unwrapRetailerLink(
+          seller?.link
+        );
 
 
       if (!directLink) {
@@ -255,14 +350,14 @@
       }
 
 
-      /*
-        Prefer the seller's own price when available.
-      */
+      // --------------------------------------------------------
+      // PRICE
+      // --------------------------------------------------------
 
       const sellerPriceText =
-        seller.base_price ||
-        seller.price ||
-        seller.original_price ||
+        seller?.base_price ||
+        seller?.price ||
+        seller?.original_price ||
         "";
 
 
@@ -278,31 +373,40 @@
         );
 
 
+      // --------------------------------------------------------
+      // RETURN NORMALIZED RETAILER OFFER
+      // --------------------------------------------------------
+
       return {
 
-        link: directLink,
+        link:
+          directLink,
 
         source:
-          seller.name ||
-          item.source ||
+          seller?.name ||
+          item?.source ||
           "Retailer",
 
         price:
           sellerPrice ??
-          numericPrice(item.extracted_price),
+          numericPrice(
+            item?.extracted_price
+          ),
 
         priceText:
           sellerPriceText ||
-          item.price ||
+          item?.price ||
           "",
 
         currency:
           sellerCurrency ||
-          detectCurrency(item.price),
+          detectCurrency(
+            item?.price
+          ),
 
         delivery:
           seller?.details_and_offers?.[0]?.text ||
-          item.delivery ||
+          item?.delivery ||
           ""
 
       };
@@ -319,9 +423,9 @@
   }
 
 
-  /* =========================================================
-     MAIN SEARCH
-  ========================================================= */
+  // ============================================================
+  // MAIN SEARCH
+  // ============================================================
 
   try {
 
@@ -360,7 +464,9 @@
 
     if (!response.ok) {
 
-      return res.status(response.status).json({
+      return res.status(
+        response.status
+      ).json({
 
         error:
           data?.error ||
@@ -371,23 +477,32 @@
     }
 
 
+    // ----------------------------------------------------------
+    // SHOPPING RESULTS
+    // ----------------------------------------------------------
+
     const shoppingResults =
-      data.shopping_results || [];
+      Array.isArray(
+        data?.shopping_results
+      )
+        ? data.shopping_results
+        : [];
 
 
     /*
-      We don't ask for direct retailer links
-      for hundreds of products.
-
-      Start with the first 10.
-      This keeps the MVP reasonably fast
-      and controls API usage.
-    */
+     * We process the first 10 results.
+     *
+     * This keeps the number of additional
+     * immersive-product requests reasonable.
+     */
 
     const candidates =
       shoppingResults.slice(0, 10);
 
-      console.log("AUVRA RAW SHOPPING RESULT:", JSON.stringify(candidates[0], null, 2));
+
+    // ----------------------------------------------------------
+    // NORMALIZE PRODUCTS
+    // ----------------------------------------------------------
 
     const products =
       await Promise.all(
@@ -396,28 +511,24 @@
           async (item, index) => {
 
             const retailer =
-              await getRetailerOffer(item);
+              await getRetailerOffer(
+                item
+              );
 
 
             const originalPrice =
               retailer?.price ??
               numericPrice(
-                item.extracted_price
+                item?.extracted_price
               );
 
 
             const originalCurrency =
               retailer?.currency ||
               detectCurrency(
-                item.price
+                item?.price
               );
 
-
-            /*
-              IMPORTANT:
-              If we don't have a direct retailer URL,
-              don't use Google's product URL.
-            */
 
             const retailerLink =
               retailer?.link || "";
@@ -426,65 +537,68 @@
             return {
 
               id:
-                item.product_id ||
+                item?.product_id ||
                 `shopping-${index}`,
 
               title:
-                item.title ||
+                item?.title ||
                 "Product",
 
 
-              /*
-                ORIGINAL RETAILER PRICE
-              */
+              // ------------------------------------------------
+              // ORIGINAL RETAILER PRICE
+              // ------------------------------------------------
 
               originalPrice,
 
               originalOldPrice:
                 numericPrice(
-                  item.extracted_old_price
+                  item?.extracted_old_price
                 ),
-
-
-              /*
-                ORIGINAL RETAILER CURRENCY
-              */
 
               originalCurrency,
 
 
+              // ------------------------------------------------
+              // DISPLAY TEXT
+              // ------------------------------------------------
+
               priceText:
                 retailer?.priceText ||
-                item.price ||
+                item?.price ||
                 "",
 
               oldPriceText:
-                item.old_price ||
+                item?.old_price ||
                 "",
 
 
-              /*
-                Compatibility fields
-              */
-
+              // Backward-compatible fields
               price:
                 originalPrice,
 
               oldPrice:
                 numericPrice(
-                  item.extracted_old_price
+                  item?.extracted_old_price
                 ),
 
 
+              // ------------------------------------------------
+              // RETAILER
+              // ------------------------------------------------
+
               source:
                 retailer?.source ||
-                item.source ||
+                item?.source ||
                 "Retailer",
 
 
               /*
-                THIS IS THE IMPORTANT PART
-              */
+               * IMPORTANT:
+               *
+               * This is now the ACTUAL retailer URL,
+               * not Google's product page.
+               */
 
               link:
                 retailerLink,
@@ -492,37 +606,39 @@
 
               delivery:
                 retailer?.delivery ||
-                item.delivery ||
+                item?.delivery ||
                 "",
 
+
+              // ------------------------------------------------
+              // PRODUCT INFO
+              // ------------------------------------------------
 
               rating:
-                item.rating ??
+                item?.rating ??
                 null,
 
-
               reviews:
-                item.reviews ??
+                item?.reviews ??
                 0,
 
-
               thumbnail:
-                item.thumbnail ||
+                item?.thumbnail ||
                 "",
-
 
               productId:
-                item.product_id ||
+                item?.product_id ||
                 "",
 
 
-              /*
-                Useful debugging information.
-                This does NOT expose the API key.
-              */
+              // ------------------------------------------------
+              // SAFETY FLAG
+              // ------------------------------------------------
 
               hasDirectRetailerLink:
-                Boolean(retailerLink)
+                Boolean(
+                  retailerLink
+                )
 
             };
 
@@ -532,13 +648,9 @@
       );
 
 
-    /*
-      Only return products that have
-      a real retailer destination.
-
-      This prevents Auvra from accidentally
-      sending users to Google.
-    */
+    // ----------------------------------------------------------
+    // ONLY RETURN PRODUCTS WITH REAL RETAILER LINKS
+    // ----------------------------------------------------------
 
     const usableProducts =
       products.filter(
@@ -546,6 +658,10 @@
           product.hasDirectRetailerLink
       );
 
+
+    // ----------------------------------------------------------
+    // RESPONSE
+    // ----------------------------------------------------------
 
     return res.status(200).json({
 
