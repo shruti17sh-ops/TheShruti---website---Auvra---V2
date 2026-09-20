@@ -1764,27 +1764,26 @@ function inferCurrency(product) {
       ""
     );
 
+if (/₹|INR/i.test(raw))
+  return "INR";
 
-  if (/₹|INR/i.test(raw))
-    return "INR";
+if (/A\$|AUD/i.test(raw))
+  return "AUD";
 
-  if (/\$|USD/i.test(raw))
-    return "USD";
+if (/C\$|CAD/i.test(raw))
+  return "CAD";
 
-  if (/€|EUR/i.test(raw))
-    return "EUR";
+if (/\$|USD/i.test(raw))
+  return "USD";
 
-  if (/£|GBP/i.test(raw))
-    return "GBP";
+if (/€|EUR/i.test(raw))
+  return "EUR";
 
-  if (/AED/i.test(raw))
-    return "AED";
+if (/£|GBP/i.test(raw))
+  return "GBP";
 
-  if (/A\$/i.test(raw))
-    return "AUD";
-
-  if (/C\$/i.test(raw))
-    return "CAD";
+if (/AED/i.test(raw))
+  return "AED";
 
 
   /*
@@ -3506,7 +3505,9 @@ async function ensureProfile(
 ========================================================= */
 
 async function loadProfileCurrency() {
-  userDisplayCurrency = DEFAULT_CURRENCY;
+
+userDisplayCurrency = DEFAULT_CURRENCY;
+currentCurrency = DEFAULT_CURRENCY;
 
   try {
     const {
@@ -3518,12 +3519,14 @@ async function loadProfileCurrency() {
     if (!user) {
       const localCurrency =
         localStorage.getItem("auvraCurrency");
-
-      if (
-        localCurrency &&
-        CURRENCY_INFO[localCurrency]
-      ) {
-        userDisplayCurrency = localCurrency;
+      
+     if (
+  localCurrency &&
+  CURRENCY_INFO[localCurrency]
+) {
+  userDisplayCurrency = localCurrency;
+  currentCurrency = localCurrency;
+}
       }
 
       return;
@@ -3547,18 +3550,21 @@ async function loadProfileCurrency() {
       return;
     }
 
-    if (
-      data?.currency &&
-      CURRENCY_INFO[data.currency]
-    ) {
-      userDisplayCurrency =
-        data.currency;
+if (
+  data?.currency &&
+  CURRENCY_INFO[data.currency]
+) {
+  userDisplayCurrency =
+    data.currency;
 
-      localStorage.setItem(
-        "auvraCurrency",
-        data.currency
-      );
-    }
+  currentCurrency =
+    data.currency;
+
+  localStorage.setItem(
+    "auvraCurrency",
+    data.currency
+  );
+}
 
   } catch (error) {
     console.error(
@@ -3648,7 +3654,7 @@ async function saveCurrencyPreference(
   }
 
   userDisplayCurrency = currency;
-
+  currentCurrency = currency;
   try {
     const {
       data: {
@@ -3970,11 +3976,7 @@ async function updateAccountUI() {
 
   updateCurrencyUI();
 
-  const query = searchInput?.value?.trim();
-
-  if (query) {
-    searchProducts(query);
-  }
+  await renderProducts(currentProducts);
 
   if (typeof showToast === "function") {
     showToast(`Currency changed to ${currency}`);
