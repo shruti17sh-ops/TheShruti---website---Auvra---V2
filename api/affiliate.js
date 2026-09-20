@@ -1,17 +1,174 @@
+// Auvra Monetization Router
+// V3 architecture
+//
+// Priority:
+// 1. Monetized affiliate route
+// 2. Future alternative affiliate networks
+// 3. Direct retailer fallback
+//
+// IMPORTANT:
+// Never treat a Cuelinks tracking_url as monetized unless
+// Cuelinks explicitly returns affiliated === true.
+
 module.exports = async (req, res) => {
-  if (req.method !== 'GET') return res.status(405).json({error:'Method not allowed'});
-  const url = req.query?.url;
-  if (!url || !/^https?:\/\//i.test(url)) return res.status(400).json({error:'Valid merchant URL is required'});
-  const key = process.env.CUELINKS_API_KEY;
-  if (!key) return res.status(503).json({error:'Affiliate backend is not configured'});
-  try {
-    const r = await fetch('https://developers.cuelinks.com/pub_api/v3/links/convert', {
-      method:'POST', headers:{Authorization:`Token ${key}`,'Content-Type':'application/json'},
-      body:JSON.stringify({url,shorten:false,subid:'auvra_web',subid2:'mobile'})
+  if (req.method !== "GET") {
+    return res.status(405).json({
+      error: "Method not allowed"
     });
-    const d = await r.json();
-    if (!r.ok) return res.status(r.status).json({error:d?.error || 'Cuelinks request failed'});
-    const x=d?.data||{};
-    return res.status(200).json({tracking_url:x.tracking_url||null,affiliated:!!x.affiliated,campaign:x.campaign||null,original_url:x.original_url||url});
-  } catch(e){ return res.status(500).json({error:'Affiliate conversion failed'}); }
+  }
+
+  const originalUrl = String(req.query?.url || "").trim();
+
+  if (!originalUrl) {
+    return res.status(400).json({
+      error: "Retailer URL is required"
+    });
+  }
+
+  // Basic URL validation
+  let retailerUrl;
+
+  try {
+    retailerUrl = new URL(originalUrl);
+  } catch {
+    return res.status(400).json({
+      error: "Invalid retailer URL"
+    });
+  }
+
+  // Only allow normal web URLs.
+  if (!["http:", "https:"].includes(retailerUrl.protocol)) {
+    return res.status(400).json({
+      error: "Unsupported retailer URL"
+    });
+  }
+
+  const apiKey = process.env.CUELINKS_API_KEY;
+
+  /*
+   * ---------------------------------------------------------
+   * 1. TRY CUELINKS
+   * ---------------------------------------------------------
+   */
+
+  if (apiKey) {
+    try {
+      const response = await fetch(
+        "https://developers.cuelinks.com/pub_api/v3/links/convert",
+        {
+          method: "POST",
+          headers: {
+            "Authorization": `Token ${apiKey}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            url: originalUrl
+          })
+        }
+      );
+
+      const data = await response.json();
+
+      if (response.ok && data?.data) {
+        const result = data.data;
+
+        /*
+         * CRITICAL:
+         *
+         * tracking_url can exist even when affiliated=false.
+         *
+         * Therefore:
+         *
+         * affiliated=true
+         *     → monetized Cuelinks route
+         *
+         * affiliated=false
+         *     → DO NOT use Cuelinks tracking URL
+         */
+
+        if (result.affiliated === true && result.tracking_url) {
+          return res.status(200).json({
+            success: true,
+            destination: "affiliate",
+            network: "cuelinks",
+            affiliated: true,
+            tracking_url: result.tracking_url,
+            original_url: originalUrl,
+            campaign: result.campaign || null
+          });
+        }
+
+        /*
+         * Cuelinks knows about the URL, but Auvra
+         * cannot currently earn commission from it.
+         */
+
+        return res.status(200).json({
+          success: true,
+          destination: "retailer",
+          network: "cuelinks",
+          affiliated: false,
+          tracking_url: null,
+          original_url: originalUrl,
+          campaign: result.campaign || null
+        });
+      }
+
+      /*
+       * Cuelinks responded with an error.
+       *
+       * Do NOT break the customer's shopping journey.
+       */
+
+      console.warn(
+        "Cuelinks conversion unavailable:",
+        data?.error || response.status
+      );
+
+    } catch (error) {
+      console.warn(
+        "Cuelinks request failed:",
+        error?.message || error
+      );
+    }
+  } else {
+    console.warn("CUELINKS_API_KEY is not configured.");
+  }
+
+  /*
+   * ---------------------------------------------------------
+   * 2. FUTURE NETWORK ROUTES
+   * ---------------------------------------------------------
+   *
+   * Amazon / Flipkart / other affiliate networks will be
+   * plugged into this section later.
+   *
+   * Example future architecture:
+   *
+   * const amazonResult = await tryAmazon(...)
+   *
+   * if (amazonResult.affiliated) {
+   *   return res.status(200).json(amazonResult);
+   * }
+   */
+
+  /*
+   * ---------------------------------------------------------
+   * 3. DIRECT RETAILER
+   * ---------------------------------------------------------
+   *
+   * No monetized route currently available.
+   *
+   * Preserve the user's shopping journey.
+   */
+
+  return res.status(200).json({
+    success: true,
+    destination: "retailer",
+    network: null,
+    affiliated: false,
+    tracking_url: null,
+    original_url: originalUrl,
+    campaign: null
+  });
 };
