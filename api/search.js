@@ -1,17 +1,15 @@
-module.exports = async (req, res) => {
-  // ------------------------------------------------------------
-  // 1. Only allow GET requests
-  // ------------------------------------------------------------
+    module.exports = async (req, res) => {
+
+  /* =========================================================
+     AUVRA LIVE SHOPPING SEARCH
+     Google Shopping → Seller details → Direct retailer URL
+  ========================================================= */
 
   if (req.method !== "GET") {
     return res.status(405).json({
       error: "Method not allowed"
     });
   }
-
-  // ------------------------------------------------------------
-  // 2. Read search query
-  // ------------------------------------------------------------
 
   const q = String(req.query?.q || "").trim();
 
@@ -21,10 +19,6 @@ module.exports = async (req, res) => {
     });
   }
 
-  // ------------------------------------------------------------
-  // 3. Read SerpApi key from Vercel Environment Variables
-  // ------------------------------------------------------------
-
   const key = process.env.SERPAPI_KEY;
 
   if (!key) {
@@ -33,353 +27,580 @@ module.exports = async (req, res) => {
     });
   }
 
-  try {
-    // ----------------------------------------------------------
-    // 4. Ask SerpApi for Google Shopping results
-    // ----------------------------------------------------------
 
-    const params = new URLSearchParams({
-      engine: "google_shopping",
-      q,
-      api_key: key,
-      location: "India",
-      hl: "en",
-      device: "mobile"
-    });
+  /* =========================================================
+     HELPERS
+  ========================================================= */
 
-    const response = await fetch(
-      `https://serpapi.com/search?${params.toString()}`
-    );
+  function detectCurrency(value) {
 
-    const data = await response.json();
+    const raw = String(value || "");
 
-    if (!response.ok) {
-      return res.status(response.status).json({
-        error:
-          data?.error ||
-          "Shopping search provider error"
-      });
+    if (/₹|INR/i.test(raw)) return "INR";
+
+    if (/A\$|AUD/i.test(raw)) return "AUD";
+
+    if (/C\$|CAD/i.test(raw)) return "CAD";
+
+    if (/S\$|SGD/i.test(raw)) return "SGD";
+
+    if (/AED/i.test(raw)) return "AED";
+
+    if (/€|EUR/i.test(raw)) return "EUR";
+
+    if (/£|GBP/i.test(raw)) return "GBP";
+
+    if (/\$|USD/i.test(raw)) return "USD";
+
+    return null;
+  }
+
+
+  function numericPrice(value) {
+
+    if (
+      typeof value === "number" &&
+      Number.isFinite(value)
+    ) {
+      return value;
     }
 
-    // ----------------------------------------------------------
-    // 5. Helper: clean text
-    // ----------------------------------------------------------
+    const cleaned =
+      String(value || "")
+        .replace(/[^0-9.,-]/g, "")
+        .replace(/,(?=\d{3})/g, "");
 
-    function cleanText(value) {
+    const number =
+      Number(cleaned);
+
+    return Number.isFinite(number)
+      ? number
+      : null;
+  }
+
+
+  function normalizeName(value) {
+
+    return String(value || "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, "");
+  }
+
+
+  function getDirectSellerLink(seller) {
+
+    const link =
+      seller?.direct_link ||
+      "";
+
+    if (!link) {
+      return "";
+    }
+
+    try {
+
+      const url =
+        new URL(link);
+
+      const hostname =
+        url.hostname.toLowerCase();
+
+      /*
+        Never accept Google as the final retailer.
+      */
+
       if (
-        value === null ||
-        value === undefined
+        hostname.includes("google.com") ||
+        hostname.includes("google.co.in") ||
+        hostname.includes("googleusercontent.com")
       ) {
         return "";
       }
 
-      return String(value)
-        .replace(/\s+/g, " ")
-        .trim();
+      return url.toString();
+
+    } catch {
+
+      return "";
+
+    }
+  }
+
+
+  /* =========================================================
+     GET DIRECT RETAILER OFFER
+  ========================================================= */
+
+  async function getRetailerOffer(item) {
+
+    /*
+      SerpApi gives us this URL for the
+      Google Immersive Product data.
+    */
+
+    const apiUrl =
+      item?.serpapi_immersive_product_api;
+
+    if (!apiUrl) {
+      return null;
     }
 
-    // ----------------------------------------------------------
-    // 6. Helper: detect original currency
-    //
-    // IMPORTANT:
-    // We NEVER assume INR just because the user is in India.
-    //
-    // If SerpApi gives:
-    // "$64.99"  -> USD
-    // "₹5,499"  -> INR
-    // "€49.99"  -> EUR
-    //
-    // If the currency cannot be identified safely:
-    // originalCurrency = null
-    // ----------------------------------------------------------
+    try {
 
-    function detectCurrency(value) {
-      const text = cleanText(value);
+      const url =
+        new URL(apiUrl);
 
-      if (!text) {
+      /*
+        Add our private SerpApi key
+        server-side.
+      */
+
+      url.searchParams.set(
+        "api_key",
+        key
+      );
+
+      /*
+        Ask SerpApi for additional stores.
+      */
+
+      url.searchParams.set(
+        "more_stores",
+        "true"
+      );
+
+
+      const response =
+        await fetch(
+          url.toString()
+        );
+
+
+      const data =
+        await response.json();
+
+
+      if (!response.ok) {
         return null;
       }
 
-      // ISO currency codes
-      const codeMatch = text.match(
-        /\b(USD|INR|EUR|GBP|AED|CAD|AUD|SGD|JPY|CNY|KRW)\b/i
-      );
 
-      if (codeMatch) {
-        return codeMatch[1].toUpperCase();
+      const sellers =
+        data?.sellers_results?.online_sellers || [];
+
+
+      if (!sellers.length) {
+        return null;
       }
 
-      // Indian Rupee
-      if (
-        text.includes("₹") ||
-        /\bRs\.?\b/i.test(text)
-      ) {
-        return "INR";
-      }
-
-      // US Dollar
-      if (text.includes("$")) {
-        return "USD";
-      }
-
-      // Euro
-      if (text.includes("€")) {
-        return "EUR";
-      }
-
-      // British Pound
-      if (text.includes("£")) {
-        return "GBP";
-      }
-
-      // UAE Dirham
-      if (
-        text.includes("د.إ") ||
-        /\bAED\b/i.test(text)
-      ) {
-        return "AED";
-      }
-
-      // Canadian Dollar
-      if (text.includes("C$")) {
-        return "CAD";
-      }
-
-      // Australian Dollar
-      if (text.includes("A$")) {
-        return "AUD";
-      }
-
-      // Singapore Dollar
-      if (text.includes("S$")) {
-        return "SGD";
-      }
 
       /*
-        ¥ is intentionally NOT automatically classified.
-        It can represent JPY or CNY.
+        First try to find the seller that matches
+        the original Shopping result source.
       */
 
-      return null;
-    }
+      const originalSource =
+        normalizeName(item.source);
 
-    // ----------------------------------------------------------
-    // 7. Helper: get numeric original price
-    // ----------------------------------------------------------
 
-    function getNumericPrice(item) {
-      // Best case: SerpApi already gives a number.
-      if (
-        typeof item?.extracted_price === "number"
-      ) {
-        return item.extracted_price;
-      }
-
-      // Sometimes price itself can be numeric.
-      if (
-        typeof item?.price === "number"
-      ) {
-        return item.price;
-      }
-
-      // Otherwise try to extract number from price text.
-      if (
-        typeof item?.price === "string"
-      ) {
-        const cleaned = item.price
-          .replace(/,/g, "");
-
-        const match = cleaned.match(
-          /-?\d+(?:\.\d+)?/
+      let seller =
+        sellers.find(
+          candidate =>
+            normalizeName(candidate.name) ===
+            originalSource
         );
 
-        if (match) {
-          return Number(match[0]);
-        }
-      }
-
-      return null;
-    }
-
-    // ----------------------------------------------------------
-    // 8. Helper: find the retailer's original currency
-    // ----------------------------------------------------------
-
-    function getOriginalCurrency(item) {
-      const candidates = [
-        item?.currency,
-        item?.price,
-        item?.price_text,
-        item?.raw_price,
-        item?.extracted_price_text,
-        item?.old_price
-      ];
-
-      for (const candidate of candidates) {
-        const currency =
-          detectCurrency(candidate);
-
-        if (currency) {
-          return currency;
-        }
-      }
-
-      return null;
-    }
-
-    // ----------------------------------------------------------
-    // 9. Normalize SerpApi results into Auvra's product format
-    // ----------------------------------------------------------
-
-    const products =
-      (data.shopping_results || []).map(
-        (item, index) => {
-          const originalPrice =
-            getNumericPrice(item);
-
-          const originalOldPrice =
-            typeof item?.extracted_old_price ===
-            "number"
-              ? item.extracted_old_price
-              : null;
-
-          const priceText =
-            cleanText(item?.price);
-
-          const oldPriceText =
-            cleanText(
-              item?.old_price ||
-              item?.extracted_old_price
-            );
-
-          const originalCurrency =
-            getOriginalCurrency(item);
-
-          return {
-            // ------------------------------------------------
-            // Product identity
-            // ------------------------------------------------
-
-            id:
-              item.product_id ||
-              `shopping-${index}`,
-
-            title:
-              item.title ||
-              "Product",
-
-            // ------------------------------------------------
-            // ORIGINAL RETAILER PRICE
-            //
-            // These values must NEVER be overwritten by
-            // currency conversion.
-            // ------------------------------------------------
-
-            originalPrice,
-
-            originalOldPrice,
-
-            originalCurrency,
-
-            // Preserve exactly what the retailer/search
-            // provider gave us where available.
-            priceText,
-
-            oldPriceText,
-
-            // ------------------------------------------------
-            // Backward compatibility
-            //
-            // Existing Auvra frontend code may still read
-            // product.price / product.oldPrice.
-            // ------------------------------------------------
-
-            price: originalPrice,
-
-            oldPrice: originalOldPrice,
-
-            // ------------------------------------------------
-            // Retailer information
-            // ------------------------------------------------
-
-            source:
-              item.source ||
-              "Retailer",
-
-            link:
-              item.product_link ||
-              "",
-
-            delivery:
-              item.delivery ||
-              "",
-
-            // ------------------------------------------------
-            // Product metadata
-            // ------------------------------------------------
-
-            rating:
-              item.rating ??
-              null,
-
-            reviews:
-              item.reviews ??
-              0,
-
-            thumbnail:
-              item.thumbnail ||
-              "",
-
-            productId:
-              item.product_id ||
-              null
-          };
-        }
-      );
-
-    // ----------------------------------------------------------
-    // 10. Send normalized Auvra response
-    // ----------------------------------------------------------
-
-    return res.status(200).json({
-      mode: "live",
-
-      query: q,
 
       /*
-        IMPORTANT ARCHITECTURE CONTRACT:
-
-        SerpApi
-             ↓
-        originalPrice
-        originalCurrency
-             ↓
-        Auvra
-             ↓
-        user's selected currency
-             ↓
-        converted display price
+        If there isn't an exact match,
+        find a close match.
       */
 
+      if (!seller && originalSource) {
+
+        seller =
+          sellers.find(
+            candidate => {
+
+              const candidateName =
+                normalizeName(candidate.name);
+
+              return (
+                candidateName.includes(originalSource) ||
+                originalSource.includes(candidateName)
+              );
+
+            }
+          );
+
+      }
+
+
+      /*
+        Last resort:
+        use the first available seller.
+      */
+
+      if (!seller) {
+        seller = sellers[0];
+      }
+
+
+      const directLink =
+        getDirectSellerLink(seller);
+
+
+      if (!directLink) {
+        return null;
+      }
+
+
+      /*
+        Prefer the seller's own price when available.
+      */
+
+      const sellerPriceText =
+        seller.base_price ||
+        seller.price ||
+        seller.original_price ||
+        "";
+
+
+      const sellerPrice =
+        numericPrice(
+          sellerPriceText
+        );
+
+
+      const sellerCurrency =
+        detectCurrency(
+          sellerPriceText
+        );
+
+
+      return {
+
+        link: directLink,
+
+        source:
+          seller.name ||
+          item.source ||
+          "Retailer",
+
+        price:
+          sellerPrice ??
+          numericPrice(item.extracted_price),
+
+        priceText:
+          sellerPriceText ||
+          item.price ||
+          "",
+
+        currency:
+          sellerCurrency ||
+          detectCurrency(item.price),
+
+        delivery:
+          seller?.details_and_offers?.[0]?.text ||
+          item.delivery ||
+          ""
+
+      };
+
+    } catch (error) {
+
+      console.warn(
+        "Retailer lookup failed:",
+        error?.message
+      );
+
+      return null;
+    }
+  }
+
+
+  /* =========================================================
+     MAIN SEARCH
+  ========================================================= */
+
+  try {
+
+    const params =
+      new URLSearchParams({
+
+        engine:
+          "google_shopping",
+
+        q,
+
+        api_key:
+          key,
+
+        location:
+          "India",
+
+        hl:
+          "en",
+
+        device:
+          "mobile"
+
+      });
+
+
+    const response =
+      await fetch(
+        `https://serpapi.com/search?${params.toString()}`
+      );
+
+
+    const data =
+      await response.json();
+
+
+    if (!response.ok) {
+
+      return res.status(response.status).json({
+
+        error:
+          data?.error ||
+          "Shopping search provider error"
+
+      });
+
+    }
+
+
+    const shoppingResults =
+      data.shopping_results || [];
+
+
+    /*
+      We don't ask for direct retailer links
+      for hundreds of products.
+
+      Start with the first 10.
+      This keeps the MVP reasonably fast
+      and controls API usage.
+    */
+
+    const candidates =
+      shoppingResults.slice(0, 10);
+
+
+    const products =
+      await Promise.all(
+
+        candidates.map(
+          async (item, index) => {
+
+            const retailer =
+              await getRetailerOffer(item);
+
+
+            const originalPrice =
+              retailer?.price ??
+              numericPrice(
+                item.extracted_price
+              );
+
+
+            const originalCurrency =
+              retailer?.currency ||
+              detectCurrency(
+                item.price
+              );
+
+
+            /*
+              IMPORTANT:
+              If we don't have a direct retailer URL,
+              don't use Google's product URL.
+            */
+
+            const retailerLink =
+              retailer?.link || "";
+
+
+            return {
+
+              id:
+                item.product_id ||
+                `shopping-${index}`,
+
+              title:
+                item.title ||
+                "Product",
+
+
+              /*
+                ORIGINAL RETAILER PRICE
+              */
+
+              originalPrice,
+
+              originalOldPrice:
+                numericPrice(
+                  item.extracted_old_price
+                ),
+
+
+              /*
+                ORIGINAL RETAILER CURRENCY
+              */
+
+              originalCurrency,
+
+
+              priceText:
+                retailer?.priceText ||
+                item.price ||
+                "",
+
+              oldPriceText:
+                item.old_price ||
+                "",
+
+
+              /*
+                Compatibility fields
+              */
+
+              price:
+                originalPrice,
+
+              oldPrice:
+                numericPrice(
+                  item.extracted_old_price
+                ),
+
+
+              source:
+                retailer?.source ||
+                item.source ||
+                "Retailer",
+
+
+              /*
+                THIS IS THE IMPORTANT PART
+              */
+
+              link:
+                retailerLink,
+
+
+              delivery:
+                retailer?.delivery ||
+                item.delivery ||
+                "",
+
+
+              rating:
+                item.rating ??
+                null,
+
+
+              reviews:
+                item.reviews ??
+                0,
+
+
+              thumbnail:
+                item.thumbnail ||
+                "",
+
+
+              productId:
+                item.product_id ||
+                "",
+
+
+              /*
+                Useful debugging information.
+                This does NOT expose the API key.
+              */
+
+              hasDirectRetailerLink:
+                Boolean(retailerLink)
+
+            };
+
+          }
+        )
+
+      );
+
+
+    /*
+      Only return products that have
+      a real retailer destination.
+
+      This prevents Auvra from accidentally
+      sending users to Google.
+    */
+
+    const usableProducts =
+      products.filter(
+        product =>
+          product.hasDirectRetailerLink
+      );
+
+
+    return res.status(200).json({
+
+      mode:
+        "live",
+
+      query:
+        q,
+
+
       currencyPolicy: {
-        originalPricePreserved: true,
-        originalCurrencyPreserved: true,
+
+        originalPricePreserved:
+          true,
+
+        originalCurrencyPreserved:
+          true,
+
         displayCurrency:
           "controlled-by-user-profile"
+
       },
 
-      products
+
+      retailerPolicy: {
+
+        directRetailerLinksOnly:
+          true,
+
+        googleProductLinksAllowed:
+          false
+
+      },
+
+
+      products:
+        usableProducts
+
     });
 
+
   } catch (error) {
+
     console.error(
-      "Search provider error:",
+      "Auvra search error:",
       error
     );
 
+
     return res.status(500).json({
+
       error:
-        "Search provider request failed"
+        "Shopping search request failed"
+
     });
+
   }
+
 };
