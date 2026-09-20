@@ -1400,6 +1400,77 @@ const supabaseClient =
     SUPABASE_PUBLISHABLE_KEY
   );
 
+  // ============================================================
+// AUVRA CURRENCY SYSTEM
+// ============================================================
+
+const DEFAULT_CURRENCY = "INR";
+
+const CURRENCY_INFO = {
+  INR: {
+    code: "INR",
+    symbol: "₹",
+    name: "Indian Rupee"
+  },
+
+  USD: {
+    code: "USD",
+    symbol: "$",
+    name: "US Dollar"
+  },
+
+  EUR: {
+    code: "EUR",
+    symbol: "€",
+    name: "Euro"
+  },
+
+  GBP: {
+    code: "GBP",
+    symbol: "£",
+    name: "British Pound"
+  },
+
+  AED: {
+    code: "AED",
+    symbol: "د.إ",
+    name: "UAE Dirham"
+  },
+
+  CAD: {
+    code: "CAD",
+    symbol: "C$",
+    name: "Canadian Dollar"
+  },
+
+  AUD: {
+    code: "AUD",
+    symbol: "A$",
+    name: "Australian Dollar"
+  },
+
+  SGD: {
+    code: "SGD",
+    symbol: "S$",
+    name: "Singapore Dollar"
+  },
+
+  JPY: {
+    code: "JPY",
+    symbol: "¥",
+    name: "Japanese Yen"
+  },
+
+  CNY: {
+    code: "CNY",
+    symbol: "¥",
+    name: "Chinese Yuan"
+  }
+};
+
+let userDisplayCurrency = DEFAULT_CURRENCY;
+
+const fxRateCache = new Map();
 
 /* =========================================================
    DEMO PRODUCTS
@@ -3434,47 +3505,68 @@ async function ensureProfile(
    LOAD PROFILE CURRENCY
 ========================================================= */
 
-async function loadProfileCurrency(
-  userId
-) {
+async function loadProfileCurrency() {
+  userDisplayCurrency = DEFAULT_CURRENCY;
 
-  const profile =
-    await ensureProfile(
-      userId
+  try {
+    const {
+      data: {
+        user
+      }
+    } = await supabaseClient.auth.getUser();
+
+    if (!user) {
+      const localCurrency =
+        localStorage.getItem("auvraCurrency");
+
+      if (
+        localCurrency &&
+        CURRENCY_INFO[localCurrency]
+      ) {
+        userDisplayCurrency = localCurrency;
+      }
+
+      return;
+    }
+
+    const {
+      data,
+      error
+    } = await supabaseClient
+      .from("Profiles")
+      .select("currency")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    if (error) {
+      console.error(
+        "Unable to load profile currency:",
+        error
+      );
+
+      return;
+    }
+
+    if (
+      data?.currency &&
+      CURRENCY_INFO[data.currency]
+    ) {
+      userDisplayCurrency =
+        data.currency;
+
+      localStorage.setItem(
+        "auvraCurrency",
+        data.currency
+      );
+    }
+
+  } catch (error) {
+    console.error(
+      "Currency profile error:",
+      error
     );
-
-
-  currentCurrency =
-    profile?.currency ||
-    localStorage.getItem(
-      "auvraCurrency"
-    ) ||
-    "INR";
-
-
-  localStorage.setItem(
-    "auvraCurrency",
-    currentCurrency
-  );
-
-
-  document.getElementById(
-    "currencySelect"
-  ).value =
-    currentCurrency;
-
-
-  document.getElementById(
-    "heroCurrency"
-  ).textContent =
-    currentCurrency;
-
-
-  await renderProducts(
-    currentProducts
-  );
-
-}
+  }
+        }
 
 
 /* =========================================================
@@ -3550,6 +3642,207 @@ async function saveCurrencyPreference(
 
 }
 
+  async function saveUserDisplayCurrency(currency) {
+  if (!CURRENCY_INFO[currency]) {
+    return false;
+  }
+
+  userDisplayCurrency = currency;
+
+  try {
+    const {
+      data: {
+        user
+      }
+    } = await supabaseClient.auth.getUser();
+
+    if (!user) {
+      localStorage.setItem(
+        "auvraCurrency",
+        currency
+      );
+
+      return true;
+    }
+
+    const {
+      error
+    } = await supabaseClient
+      .from("Profiles")
+      .upsert(
+        {
+          id: user.id,
+          currency: currency
+        },
+        {
+          onConflict: "id"
+        }
+      );
+
+    if (error) {
+      console.error(
+        "Unable to save currency:",
+        error
+      );
+
+      return false;
+    }
+
+    localStorage.setItem(
+      "auvraCurrency",
+      currency
+    );
+
+    return true;
+
+  } catch (error) {
+    console.error(
+      "Currency save error:",
+      error
+    );
+
+    return false;
+  }
+  }
+
+async function getExchangeRate(
+  fromCurrency,
+  toCurrency
+) {
+  const from =
+    String(fromCurrency || "").toUpperCase();
+
+  const to =
+    String(toCurrency || "").toUpperCase();
+
+  if (!from || !to) {
+    return null;
+  }
+
+  if (from === to) {
+    return 1;
+  }
+
+  const cacheKey =
+    `${from}_${to}`;
+
+  if (fxRateCache.has(cacheKey)) {
+    return fxRateCache.get(cacheKey);
+  }
+
+  try {
+    const response = await fetch(
+      `/api/fx?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.error(
+        "FX request failed:",
+        data
+      );
+
+      return null;
+    }
+
+    const rate =
+      Number(data?.rate);
+
+    if (
+      !Number.isFinite(rate) ||
+      rate <= 0
+    ) {
+      return null;
+    }
+
+    fxRateCache.set(
+      cacheKey,
+      rate
+    );
+
+    return rate;
+
+  } catch (error) {
+    console.error(
+      "FX request error:",
+      error
+    );
+
+    return null;
+  }
+}
+
+
+  async function convertPrice(
+  originalPrice,
+  originalCurrency,
+  displayCurrency = userDisplayCurrency
+) {
+  const price =
+    Number(originalPrice);
+
+  const from =
+    String(originalCurrency || "")
+      .toUpperCase();
+
+  const to =
+    String(displayCurrency || DEFAULT_CURRENCY)
+      .toUpperCase();
+
+  if (
+    !Number.isFinite(price) ||
+    !from
+  ) {
+    return null;
+  }
+
+  const rate =
+    await getExchangeRate(
+      from,
+      to
+    );
+
+  if (rate === null) {
+    return null;
+  }
+
+  return price * rate;
+}
+
+  function formatCurrency(
+  amount,
+  currency
+) {
+  if (
+    amount === null ||
+    amount === undefined ||
+    !Number.isFinite(Number(amount))
+  ) {
+    return "Price unavailable";
+  }
+
+  const info =
+    CURRENCY_INFO[currency] ||
+    CURRENCY_INFO[DEFAULT_CURRENCY];
+
+  try {
+    return new Intl.NumberFormat(
+      "en-IN",
+      {
+        style: "currency",
+        currency: info.code,
+        maximumFractionDigits:
+          info.code === "JPY"
+            ? 0
+            : 2
+      }
+    ).format(Number(amount));
+
+  } catch {
+    return `${info.symbol}${Number(amount).toLocaleString("en-IN")}`;
+  }
+}
 
 /* =========================================================
    LOGOUT
